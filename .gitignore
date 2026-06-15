@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# editor / backup cruft
+*.orig
+*~
+*.swp
+
+# python cruft
+__pycache__/
+*.pyc
+
+# compiled C artifacts
+*.o
+*.out
+a.out
+
+# built executables (extensionless, named after their .c source)
+na-query
+na-query-gmp
