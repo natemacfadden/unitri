@@ -41,10 +41,11 @@
 #ifndef n
 #define n 6
 #endif
-// the indexing formulas below use height[m-4] and shape-index tables over
-// height[1],...,height[m-3]; smaller widths need separate special cases
-#if m < 4
-#error "m must be >= 4; widths m < 4 need special-case code"
+// the indexing uses height[m-4] and a shape-index table over height[1..m-3].
+// m>=4 is the general case; m=3 degenerates cleanly (no interior heights, one
+// shape slot). m<3 would need separate special-case code.
+#if m < 3
+#error "m must be >= 3; widths m < 3 need special-case code"
 #endif
 
 // auxiliary variables
@@ -936,8 +937,10 @@ int main( int argc, char *argv[] ){
          twice_area_prefix[m-2] = twice_area_prefix[m-3] + 2*height_m2;
          if (twice_area_prefix[m-2] > twice_area) break;
          height[m-2] = height_m2;
+#if m >= 4
          subshape_code_max[m-3] = corner_subshape_code_max(
            height[m-4], height[m-3], height_m2);
+#endif
          height_options_m2[1] = (height_options_m2[0] = height_m2)-1;
 
          for (height_m1=0; height_m1<=n; height_m1++) {
