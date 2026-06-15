@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""
+Independent cross-check of the floor-aware counter (na-query-gmp.c) against
+TOPCOM, via CYTools' Polytope.all_triangulations.
+
+TOPCOM is a separate codebase and algorithm, so agreement is real evidence the
+recurrence -- including the non-flat-floor (need_full_table) generalization and
+the small widths m=3 / m>=4 -- counts fine (primitive) triangulations correctly.
+
+Scope/limits:
+  - Only CONVEX regions are comparable: TOPCOM triangulates a point
+    configuration (its convex hull), which equals the region between floor L
+    and upper U only when that region is convex.  Non-convex (L,U) are skipped.
+  - Enumeration is one triangulation at a time, so this is feasible only for
+    SMALL regions (few thousand triangulations), not f(5,6)-scale counts.
+
+This validates on small cases; it is not a proof for all m,n.
+
+Usage:  python3 check_topcom.py     (needs cytools + a GMP toolchain)
+"""
+
+import subprocess
+from cytools import Polytope
+
+
+def build_dp(m, n):
+    gmp = subprocess.check_output(["brew", "--prefix", "gmp"]).decode().strip()
+    out = f"/tmp/na_qg_check_{m}_{n}"
+    subprocess.check_call(
+        ["gcc", "-O2", f"-Dm={m}", f"-Dn={n}",
+         f"-I{gmp}/include", f"-L{gmp}/lib",
+         "-o", out, "na-query-gmp.c", "-lgmp"])
+    return out
+
+
+def dp_query(binary, U, L=None):
+    inp = " ".join(map(str, U)) + "\n"
+    if L is not None:
+        inp += " ".join(map(str, L)) + "\n"
+    out = subprocess.run([binary], input=inp, capture_output=True, text=True).stdout
+    for line in out.splitlines():
+        if line.startswith("query_value"):
+            return int(line.split()[1])
+    return None
+
+
+def region_points(U, L):
+    # lattice points of {(x,y): 0<=x<=m, L[x] <= y <= U[x]} for present profiles
+    return [[x, y] for x, (lo, hi) in enumerate(zip(L, U)) for y in range(lo, hi + 1)]
+
+
+def topcom_count(U, L, cap=500000):
+    pts = region_points(U, L)
+    p = Polytope(pts)
+    if len(p.points()) != len(pts):
+        return ("non-convex", None)          # region != its convex hull
+    c = 0
+    for _ in p.all_triangulations(only_fine=True, only_regular=False,
+                                  only_star=False,
+                                  include_points_interior_to_facets=True):
+        c += 1
+        if c > cap:
+            return ("too-many", None)
+    return ("ok", c)
+
+
+# (m, n, [(name, upper U, floor L), ...]); every U,L has m+1 heights in [0,n]
+CONFIGS = [
+    (4, 6, [
+        ("4x1 rectangle (floor 0)",      [1, 1, 1, 1, 1], [0, 0, 0, 0, 0]),
+        ("4x2 rectangle (floor 0)",      [2, 2, 2, 2, 2], [0, 0, 0, 0, 0]),
+        ("flat top, valley floor",       [2, 2, 2, 2, 2], [2, 1, 0, 1, 2]),
+        ("linear floor (parallelogram)", [1, 2, 3, 4, 5], [0, 1, 2, 3, 4]),
+        ("flat floor h=1",               [3, 3, 3, 3, 3], [1, 1, 1, 1, 1]),
+        ("concave top, floor 0",         [0, 1, 2, 1, 0], [0, 0, 0, 0, 0]),
+    ]),
+    (3, 4, [
+        ("3x1 rectangle (floor 0)",      [1, 1, 1, 1],    [0, 0, 0, 0]),
+        ("3x2 rectangle (floor 0)",      [2, 2, 2, 2],    [0, 0, 0, 0]),
+        ("flat top, valley floor",       [2, 2, 2, 2],    [1, 0, 0, 1]),
+        ("linear floor (parallelogram)", [1, 2, 3, 4],    [0, 1, 2, 3]),
+        ("flat floor h=1",               [3, 3, 3, 3],    [1, 1, 1, 1]),
+        ("concave top, floor 0",         [0, 2, 2, 0],    [0, 0, 0, 0]),
+    ]),
+]
+
+
+def main():
+    fails = 0
+    for m, n, cases in CONFIGS:
+        dp = build_dp(m, n)
+        print(f"== m={m} n={n} ==")
+        for name, U, L in cases:
+            status, tc = topcom_count(U, L)
+            q = dp_query(dp, U, L)
+            if status != "ok":
+                print(f"  [skip] {name:32s} ({status})")
+                continue
+            ok = (tc == q)
+            fails += not ok
+            print(f"  [{'OK ' if ok else 'BAD'}] {name:32s} topcom={tc:<8} dp={q}")
+    raise SystemExit(1 if fails else 0)
+
+
+if __name__ == "__main__":
+    main()
