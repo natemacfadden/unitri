@@ -549,14 +549,18 @@ int main( int argc, char *argv[] ){
   mpz_init(query_value);
   mpz_init(recurrence_sum);
 
-  // startup message
-  // ---------------
-  printf("(* Fine triangulations of rectangle %dx%d *)\n", (int)m, (int)n);
-  printf("(* exact arbitrary-precision counts *)\n\n");
-  fflush(stdout);
-
   // read the optional target profile (blocks on stdin; see the hint there)
   read_query_profile();
+
+  // startup message; m x n is the bounding box, which a query region sits
+  // inside, so don't call it "the rectangle" when a query is given
+  if (query_enabled)
+    printf("(* fine triangulations of the queried region in a %dx%d box *)\n",
+           (int)m, (int)n);
+  else
+    printf("(* fine triangulations of the %dx%d rectangle *)\n", (int)m, (int)n);
+  printf("(* exact arbitrary-precision counts *)\n\n");
+  fflush(stdout);
 
   // helper variables
   // ----------------

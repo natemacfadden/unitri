@@ -17,7 +17,8 @@ Stepniczka and Nate MacFadden.
 | `na-query-gmp.c` | Same as `na-query.c` but **exact** (GMP big integers); one run gives the true count, no CRT needed. |
 | `crt_combine.py` | Combines per-prime residues from `na-query.c` into the exact count via the Chinese Remainder Theorem. |
 | `check_topcom.py` | Independent cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
-| `profile.sh` | Reports wall time and peak memory of a single run. |
+| `run_tests.py` | Test suite: checks several regions against known counts (literature / TOPCOM). |
+| `profile.sh` | Reports wall time (min/mean over `ITERS` runs) and peak memory of a command. |
 | `baseline.txt` | Reference outputs used to check the rework. |
 
 ## Build
