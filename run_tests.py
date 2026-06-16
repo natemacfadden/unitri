@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test suite for na-query.c (exact GMP back-end) against known counts.
+Test suite for na-query.c (big-integer GMP back-end) against known counts.
 
 Each case names a region (a profile of upper heights U over a floor L within an
 m x n bounding box) and an expected exact count.  The script builds na-query.c
@@ -47,20 +47,22 @@ def skeleton_bytes(m, n):
     return (m + 1) * (n2 ** (m - 3)) * (n2 + n2 * n2) * 8
 
 
-def build(m, n):
-    out = f"/tmp/na_test_{m}_{n}"
+def build():
+    # m, n are runtime arguments now, so one binary serves every case
+    out = "/tmp/na_test"
     subprocess.check_call(
-        ["gcc", "-O2", f"-Dm={m}", f"-Dn={n}",
+        ["gcc", "-O2",
          f"-I{GMP}/include", f"-L{GMP}/lib",
          "-DGMP", "-o", out, "na-query.c", "-lgmp"])
     return out
 
 
-def run_query(binary, U, L):
+def run_query(binary, m, n, U, L):
     inp = " ".join(map(str, U)) + "\n"
     if L is not None:
         inp += " ".join(map(str, L)) + "\n"
-    out = subprocess.run([binary], input=inp, capture_output=True, text=True).stdout
+    out = subprocess.run([binary, str(m), str(n)],
+                         input=inp, capture_output=True, text=True).stdout
     for line in out.splitlines():
         if line.startswith("query_value"):
             return line.split()[1]
@@ -79,14 +81,15 @@ def verdict(expected, got):
 
 
 def main():
+    binary = build()
     fails = 0
     for name, m, n, U, L, expected in CASES:
         mem = skeleton_bytes(m, n)
         if mem > MEM_CAP:
             print(f"[SKIP] {name}\n       needs ~{mem/1e9:.0f} GB (m={m}, n={n}); "
-                  f"recompile and run on a big-memory machine")
+                  f"run on a big-memory machine")
             continue
-        got = run_query(build(m, n), U, L)
+        got = run_query(binary, m, n, U, L)
         v = verdict(expected, got)
         fails += not v.startswith("OK")
         print(f"[{'PASS' if v.startswith('OK') else 'FAIL'}] {name}\n       {v}")

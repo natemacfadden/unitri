@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Independent cross-check of the floor-aware counter (na-query.c, exact GMP
+Independent cross-check of the floor-aware counter (na-query.c, big-integer GMP
 back-end) against TOPCOM, via CYTools' Polytope.all_triangulations.
 
 TOPCOM is a separate codebase and algorithm, so agreement is real evidence the
@@ -30,21 +30,23 @@ def skeleton_bytes(m, n):
     return (m + 1) * (n2 ** (m - 3)) * (n2 + n2 * n2) * 8
 
 
-def build_dp(m, n):
+def build_dp():
+    # m, n are runtime arguments now, so one binary serves every region
     gmp = subprocess.check_output(["brew", "--prefix", "gmp"]).decode().strip()
-    out = f"/tmp/na_qg_check_{m}_{n}"
+    out = "/tmp/na_qg_check"
     subprocess.check_call(
-        ["gcc", "-O2", f"-Dm={m}", f"-Dn={n}",
+        ["gcc", "-O2",
          f"-I{gmp}/include", f"-L{gmp}/lib",
          "-DGMP", "-o", out, "na-query.c", "-lgmp"])
     return out
 
 
-def dp_query(binary, U, L=None):
+def dp_query(binary, m, n, U, L=None):
     inp = " ".join(map(str, U)) + "\n"
     if L is not None:
         inp += " ".join(map(str, L)) + "\n"
-    out = subprocess.run([binary], input=inp, capture_output=True, text=True).stdout
+    out = subprocess.run([binary, str(m), str(n)],
+                         input=inp, capture_output=True, text=True).stdout
     for line in out.splitlines():
         if line.startswith("query_value"):
             return int(line.split()[1])
@@ -93,17 +95,17 @@ CONFIGS = [
 
 
 def main():
+    dp = build_dp()
     fails = 0
     for m, n, cases in CONFIGS:
         mem = skeleton_bytes(m, n)
         if mem > MEM_CAP:
             print(f"== m={m} n={n} == [SKIP] needs ~{mem/1e9:.0f} GB")
             continue
-        dp = build_dp(m, n)
         print(f"== m={m} n={n} ==")
         for name, U, L in cases:
             status, tc = topcom_count(U, L)
-            q = dp_query(dp, U, L)
+            q = dp_query(dp, m, n, U, L)
             if status != "ok":
                 print(f"  [skip] {name:32s} ({status})")
                 continue

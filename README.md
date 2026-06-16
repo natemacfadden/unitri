@@ -13,8 +13,9 @@ Stepniczka and Nate MacFadden.
 | file | what it does |
 |------|--------------|
 | `orig.c` | Orevkov's original counter (unmodified); computes **modulo a prime**. |
-| `na-query.c` | Reworked/generalized counter. Two compile-time back-ends: **modulo a prime** (default) or **exact** big integers (`-DGMP`, links libgmp). Optionally reads an upper (and lower/floor) boundary profile from stdin and reports that cell's count. |
-| `crt_combine.py` | Combines per-prime residues from `na-query.c` (default build) into the exact count via the Chinese Remainder Theorem. |
+| `na_query.h` | The reworked/generalized counter as an stb-style single header. Width `m` and height `n` are runtime arguments. Two compile-time back-ends: **modulo a prime** (default) or **arbitrary-precision** big integers (`-DGMP`, links libgmp). Both give exact counts -- the modular build via CRT over several primes. |
+| `na-query.c` | Thin CLI: pulls in `na_query.h`'s implementation and forwards `argc/argv`. Reads `<m> <n> [prime_index]` plus an optional upper (and lower/floor) profile on stdin, and reports that region's count. |
+| `crt_combine.py` | Combines per-prime residues from the default build into the exact count via the Chinese Remainder Theorem. |
 | `check_topcom.py` | Independent cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
 | `run_tests.py` | Test suite: checks several regions against known counts (literature / TOPCOM). |
 | `profile.sh` | Reports wall time (min/mean over `ITERS` runs) and peak memory of a command. |
@@ -24,20 +25,16 @@ Stepniczka and Nate MacFadden.
 
 ## Build
 
-Default build computes **modulo a prime** (`m, n` default to 5, 6):
+The counting code is the single-header `na_query.h` (stb-style); `na-query.c`
+is a thin CLI that pulls in its implementation. Width `m` and height `n` are
+**runtime arguments**, so one binary handles every size -- no recompiling per
+rectangle. The default build computes **modulo a prime**:
 
 ```sh
 gcc -O2 -o na-query na-query.c
 ```
 
-Override the rectangle size with `-D` (width `m` must be >= 3; height `n` is
-unconstrained):
-
-```sh
-gcc -O2 -Dm=4 -Dn=4 -o na-query na-query.c
-```
-
-Add `-DGMP` for the **exact** big-integer back-end (one run gives the true
+Add `-DGMP` for the **big-integer** back-end (one run gives the whole
 count, no CRT needed); this links libgmp:
 
 ```sh
@@ -55,8 +52,10 @@ gcc -O2 -DGMP -I/opt/homebrew/opt/gmp/include -L/opt/homebrew/opt/gmp/lib \
 
 ## Querying a region (upper / lower boundaries)
 
-`na-query` (either back-end) reads an optional target region from **stdin**, one
-profile per line, and reports the count for that region:
+Run `./na-query <m> <n> [prime_index]` (width `m >= 3`; `prime_index` selects
+the modulus in the default build, ignored under `-DGMP`). The program reads an
+optional target region from **stdin**, one profile per line, and reports the
+count for that region:
 
 - **Line 1 -- upper boundary** (the query): `m+1` heights `h_0 h_1 ... h_m`,
   each an integer in `[0, n]`, or `.` for an *absent* vertex (the boundary
@@ -67,29 +66,29 @@ profile per line, and reports the count for that region:
   floor.
 
 With no input at all (an empty pipe / immediate Ctrl-D), the program skips the
-query and just prints the flat-square `f(m,k)` table.
+query and just prints the flat-square `f(m,k)` table for `k = 1..n`.
 
-Examples (exact build, `-DGMP`, with `m=4, n=4`).
+Examples (big-integer build, `-DGMP`).
 
 The full 4x4 square (floor defaults to flat 0) -- prints `query_value 736983568`:
 
 ```sh
-echo "4 4 4 4 4" | ./na-query
+echo "4 4 4 4 4" | ./na-query 4 4
 ```
 
 A region over a non-flat floor -- prints `query_value 14032211`:
 
 ```sh
-printf '4 4 4 4 4\n0 1 0 1 0\n' | ./na-query
+printf '4 4 4 4 4\n0 1 0 1 0\n' | ./na-query 4 4
 ```
 
 An absent vertex (`.`) on the upper boundary -- prints `query_value 35`:
 
 ```sh
-echo "0 . 3 . 0" | ./na-query
+echo "0 . 3 . 0" | ./na-query 4 4
 ```
 
-The result prints as `query_value <count>` -- exact with `-DGMP`, or the
+The result prints as `query_value <count>` -- the whole integer with `-DGMP`, or a
 residue mod the chosen prime in the default build (combine several primes with
 `crt_combine.py` to recover the exact count).
 
