@@ -2,7 +2,7 @@
 # wall time (high-resolution; min/mean over ITERS runs) and peak memory of a
 # command.  auto-detects macOS (BSD time) vs GNU/Linux time.
 #   usage:  [ITERS=N] ./profile.sh <command> [args...]      # stdin is forwarded
-#   e.g.:   echo "8 8 8 8" | ITERS=20 ./profile.sh ./na-query-gmp
+#   e.g.:   echo "8 8 8 8" | ITERS=20 ./profile.sh ./na-query
 #
 # stdin is captured once and replayed to every run.  the command runs ITERS+1
 # times total (one extra run measures peak memory).

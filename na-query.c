@@ -17,16 +17,54 @@
    only to the original code in orig.c.  Subsequently, Nate MacFadden, together
    with Claude Opus 4.8, performed a more systematic cleanup and generalization.
 
-   This file: query variant.  Evaluates the area-graded recurrence modulo a
-   prime; given a target upper-boundary profile (optionally over a lower/floor
-   profile) on stdin, it reports that cell's count.  Combine several primes via
-   the Chinese Remainder Theorem (crt_combine.py) to recover the exact count.
+   This file is the query counter, with two arithmetic back-ends selected at
+   compile time:
+
+     default (no -DGMP) : evaluates the area-graded recurrence modulo a prime.
+                          Combine several primes via the Chinese Remainder
+                          Theorem (crt_combine.py) to recover the exact count.
+
+     -DGMP              : exact arbitrary-precision arithmetic (GMP / mpz_t);
+                          a single run yields the true integer, no CRT needed
+                          (link with -lgmp).
+
+   Either way, given a target upper-boundary profile (optionally over a
+   lower/floor profile) on stdin, it reports that cell's count.
 */
 
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include<unistd.h>   // isatty, for the interactive stdin hint
+#ifdef GMP
+#include<gmp.h>
+#endif
+
+// value back-end: a table cell is an exact mpz_t (-DGMP) or an int residue
+// mod a prime (default).  VAL is the cell type; ACC is the per-cell recurrence
+// accumulator (a wider long in the mod-p build, to sum signed products before
+// reducing).  The macros below are the only places the two back-ends differ
+// in the hot path, so the rest of the code is back-end agnostic.
+#ifdef GMP
+typedef mpz_t VAL;
+typedef mpz_t ACC;
+#define VAL_INIT(x)            mpz_init(x)
+#define VAL_SET_UI(x,u)        mpz_set_ui((x), (u))
+#define ACC_ZERO(a)            mpz_set_ui((a), 0)
+#define ACC_FMA(a,sign,cell)   do { if ((sign) > 0) mpz_add((a),(a),(cell)); \
+                                    else             mpz_sub((a),(a),(cell)); } while (0)
+#define STORE_RESULT(cell,a)   recurrence_value_with_lower_base((cell), (a))
+#define PRINT_VAL(cell)        gmp_printf("%Zd", (cell))
+#else
+typedef int  VAL;
+typedef long ACC;
+#define VAL_INIT(x)            ((void)0)
+#define VAL_SET_UI(x,u)        ((x) = (u))
+#define ACC_ZERO(a)            ((a) = 0)
+#define ACC_FMA(a,sign,cell)   ((a) += (sign) * (cell))
+#define STORE_RESULT(cell,a)   ((cell) = recurrence_value_with_lower_base(a))
+#define PRINT_VAL(cell)        printf("%d", (cell))
+#endif
 
 
 // problem config
@@ -60,7 +98,6 @@
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 
 
-
 // debugging flags
 // ---------------
 // debug flag
@@ -70,6 +107,12 @@
 int only_mem = 0;
 
 
+#ifdef GMP
+// exact arithmetic
+// ----------------
+// unlike na-query.c, this variant keeps exact arbitrary-precision counts:
+// no modulus, no CRT -- one run gives the true integer
+#else
 // memory optimization
 // -------------------
 // program does calculations mod primes, for memory considerations. By doing
@@ -101,6 +144,7 @@ int prime[200]=
     31259, 31267, 31271, 31277, 31307, 31319, 31321, 31327, 31333, 31337,
     31357, 31379, 31387, 31391, 31393, 31397, 31469, 31477, 31481, 31489,
     31511, 31513, 31517, 31531, 31541, 31543, 31547, 31567, 31573, 31583};
+#endif
 
 // global state
 // ------------
@@ -110,12 +154,16 @@ long alloc_total=0;       // total instantaneous
 long max_alloc_total=0;   // maximum instantaneous
 long alloc_memH[2*m*n+1]; // byte size of each H area-layer value page
 
-// table of subshape triangulation counts, graded by twice the shape area
-// the program stores only values modulo modulus; H[v] points into memH[v],
-// and old H pointer layers are reused once their volume is no longer needed
-int ****H[2*m*n+1];
-int *memH[2*m*n+1];
-int memH0;
+// table of subshape triangulation counts, graded by twice the shape area.
+// Each value is a VAL (exact mpz_t, or an int residue); H[v] points into the
+// value page memH[v], and old H pointer layers are reused once their volume is
+// no longer needed.
+VAL ****H[2*m*n+1];
+VAL *memH[2*m*n+1];
+VAL memH0;
+#ifdef GMP
+long memH_cells[2*m*n+1];  // number of mpz_t cells in each page (for clearing)
+#endif
 
 // size and next free offset for the contiguous H[twice_area] value page
 long mem_page_size, allo;
@@ -186,8 +234,14 @@ int lower_enabled = 0;
 int lower_is_flat = 1;
 int lower_area = 0;
 int lower_height[100];
-int query_value = 0;
-
+VAL query_value;          // count at the query profile
+#ifdef GMP
+// reusable global mpz_t accumulator for the per-cell recurrence: a local would
+// force an mpz_init/mpz_clear on every cell.  (The mod-p build instead declares
+// its accumulator locally -- a plain long stays in a register through the hot
+// loop, which a global would not.)
+ACC recurrence_sum;
+#endif
 
 // non-flat floor breaks the x<->m-x reflection we normally use to store only
 // the height_0 >= height_m half of each layer; set this to store the full
@@ -196,7 +250,9 @@ int need_full_table = 0;
 
 // helper functions
 // ----------------
+#ifndef GMP
 int positive_mod(long value);
+#endif
 
 // euclidean GCD algorithm
 int gcd( int x, int y ){
@@ -374,7 +430,12 @@ static int lower_profile_is_zero(void){
   return 1;
 }
 
+#ifdef GMP
+// Write the cell's count (into dst) for the current upper profile over the
+// fixed floor lower_height[]:
+#else
 // Cell value for the current upper profile over the fixed floor lower_height[]:
+#endif
 //   upper == floor          -> 1   (empty region)
 //   upper dips below floor  -> 0
 //   otherwise               -> the accumulated recurrence sum
@@ -383,11 +444,25 @@ static int lower_profile_is_zero(void){
 // wrong for an asymmetric floor.
 // The arbitrary-floor generalization is cross-checked against TOPCOM (an
 // independent enumerator) on small convex regions; see check_topcom.py.
+#ifdef GMP
+static void recurrence_value_with_lower_base(mpz_t dst,
+                                             const mpz_t recurrence_sum){
+  if (lower_enabled && current_profile_matches(lower_height)) {
+    mpz_set_ui(dst, 1);
+    return;
+  }
+  if (!current_profile_above_lower()) {
+    mpz_set_ui(dst, 0);
+    return;
+  }
+  mpz_set(dst, recurrence_sum);
+#else
 static int recurrence_value_with_lower_base(long recurrence_sum){
   if (lower_enabled && current_profile_matches(lower_height)) return 1;
   if (!current_profile_above_lower()) return 0;
 
   return positive_mod(recurrence_sum);
+#endif
 }
 
 static int profile_is_flat_present(const int *profile){
@@ -481,11 +556,19 @@ int current_profile_is_query(void){
   return 1;
 }
 
+#ifdef GMP
+void maybe_record_query(const mpz_t value){
+#else
 void maybe_record_query(int value){
+#endif
   if (!current_profile_is_query()) return;
 
   query_found = 1;
+#ifdef GMP
+  mpz_set(query_value, value);
+#else
   query_value = value;
+#endif
 }
 
 // print a boundary profile as space-separated heights ('.' = absent vertex)
@@ -495,10 +578,12 @@ void print_profile(const int *profile){
     if (profile[coord] == n1) putchar('.');
     else printf("%d", profile[coord]);
   }
+#ifndef GMP
 }
 
 int positive_mod(long value){
   return (value % modulus + modulus) % modulus;
+#endif
 }
 
 int corner_subshape_code_max(int left, int mid, int right){
@@ -566,6 +651,7 @@ int subshape_height_at(int coord){
   return n1;
 }
 
+#ifndef GMP
 int parse_prime_index(int argc, char *argv[]){
   int prime_index = 0;
 
@@ -588,14 +674,21 @@ int parse_prime_index(int argc, char *argv[]){
   return prime_index;
 }
 
+#endif
 // ================
 // main calculation
 // ================
 int main( int argc, char *argv[] ){
+#ifdef GMP
+  (void)argc; (void)argv;
+  mpz_init(query_value);
+  mpz_init(recurrence_sum);
+#else
   int prime_index = parse_prime_index(argc, argv);
 
   // set modulus to prime_index-th prime
   modulus = prime[prime_index];
+#endif
 
   // read the optional target profile (blocks on stdin; see the hint there)
   read_query_profile();
@@ -607,7 +700,11 @@ int main( int argc, char *argv[] ){
            (int)m, (int)n);
   else
     printf("(* fine triangulations of the %dx%d rectangle *)\n", (int)m, (int)n);
+#ifdef GMP
+  printf("(* exact arbitrary-precision counts *)\n\n");
+#else
   printf("(* calculations mod %d *)\n\n", modulus);
+#endif
   fflush(stdout);
 
   // helper variables
@@ -632,19 +729,19 @@ int main( int argc, char *argv[] ){
   long mem;
 
   for (twice_area=0; twice_area<=m; twice_area++) {
-    mem = n2pow[m-3]*sizeof(int ***);
+    mem = n2pow[m-3]*sizeof(VAL ***);
     alloc_pointers += mem;
-    if (!only_mem) H[twice_area] = (int ****)malloc( mem );
+    if (!only_mem) H[twice_area] = (VAL ****)malloc( mem );
 
     for (int coord=0; coord<n2pow[m-3]; coord++) {
-      mem = n2*sizeof(int **);
+      mem = n2*sizeof(VAL **);
       alloc_pointers += mem;
-      if( ! only_mem ) H[twice_area][coord] = (int ***)malloc( mem );
+      if( ! only_mem ) H[twice_area][coord] = (VAL ***)malloc( mem );
 
       for (height_m2=0; height_m2<n2; height_m2++) {
-        mem = n2*sizeof(int *);
+        mem = n2*sizeof(VAL *);
         alloc_pointers += mem;
-        if (!only_mem) H[twice_area][coord][height_m2] = (int **)malloc( mem );
+        if (!only_mem) H[twice_area][coord][height_m2] = (VAL **)malloc( mem );
       }
     }
   }
@@ -657,13 +754,17 @@ int main( int argc, char *argv[] ){
 
   if (!only_mem) {
     // allocate/use memory for storing the data (not just pointers)
+    VAL_INIT(memH0);
     memH[0] = &memH0;
+#ifdef GMP
+    memH_cells[0] = 1;
+#endif
 
     // [twice_area][coord][m2][m1]
     H[0][0][0][0] = memH[0];
 
     // [twice_area][coord][m2][m1][m]
-    H[0][0][0][0][0] = lower_profile_is_zero() ? 1 : 0;
+    VAL_SET_UI(H[0][0][0][0][0], lower_profile_is_zero() ? 1 : 0);
   }
 
   // =========
@@ -694,8 +795,17 @@ int main( int argc, char *argv[] ){
     }
     
     // free unnecessary value memory
+#ifdef GMP
+    if (twice_area>m+1) {
+      if (!only_mem) {
+        long old = twice_area-m-1;
+        for (long i=0; i<memH_cells[old]; i++) mpz_clear(memH[old][i]);
+        free(memH[old]);
+      }
+#else
     if (twice_area>m+1) { 
       if (!only_mem) free(memH[twice_area-m-1]);
+#endif
       alloc_total -= alloc_memH[twice_area-m-1];
     }
 
@@ -909,9 +1019,9 @@ int main( int argc, char *argv[] ){
     // allocate the H[twice_area] value page
     mem_page_size = allo;
 
-     mem = mem_page_size*sizeof(int);
+     mem = mem_page_size*sizeof(VAL);
 
-     alloc_memH[twice_area] = mem; 
+     alloc_memH[twice_area] = mem;
      alloc_total += mem;
 
      if( alloc_total > max_alloc_total ) max_alloc_total = alloc_total;
@@ -919,7 +1029,13 @@ int main( int argc, char *argv[] ){
     if (only_mem) {
       continue;
     } else {
+#ifdef GMP
+      memH[twice_area] = (mpz_t *)malloc( mem );
+      memH_cells[twice_area] = mem_page_size;
+      for (long i=0; i<mem_page_size; i++) mpz_init(memH[twice_area][i]);
+#else
       memH[twice_area] = (int *)malloc( mem );
+#endif
     }
 
      allo = 0;
@@ -977,8 +1093,13 @@ int main( int argc, char *argv[] ){
                height_0, height[1], height[2]);
              subshape_code_max[0] = (height_0>0 ? 1 : 0);
              subshape_code_max[m] = (height_m>0 ? 1 : 0);
+#ifdef GMP
 
-            long recurrence_sum = 0;
+            ACC_ZERO(recurrence_sum);     // reset the reusable global accumulator
+#else
+
+            ACC recurrence_sum = 0;        // local: stays in a register
+#endif
 
              for (int coord=0; coord<=m; coord++) {
                  subshape_code[coord] = 0;
@@ -1033,12 +1154,11 @@ int main( int argc, char *argv[] ){
                  if (need_full_table
                      || height_0 > height_m
                      || subshape_code[0] <= subshape_code[m]) {
-                     recurrence_sum += inclusion_sign[m]
-                         * H[twice_area - removed_twice_area[m]]
+                     ACC_FMA(recurrence_sum, inclusion_sign[m], H[twice_area - removed_twice_area[m]]
                             [shape_index + subshape_index_delta[m-3]]
                             [height_options_m2[subshape_code[m-2]]]
                             [height_options_m1[subshape_code[m-1]]]
-                            [height_options_0[subshape_code[m]]];
+                            [height_options_0[subshape_code[m]]]);
                  }
                  else {
                   // set encoded_index
@@ -1068,14 +1188,12 @@ int main( int argc, char *argv[] ){
                       index2 = height[2]-subshape_code[2];
                   }
 
-                  recurrence_sum += inclusion_sign[m]
-                      * H[twice_area - removed_twice_area[m]]
-                         [encoded_index][index2][index1][height_0-1]; 
+                  ACC_FMA(recurrence_sum, inclusion_sign[m], H[twice_area - removed_twice_area[m]]
+                         [encoded_index][index2][index1][height_0-1]);
                  }
              }
 
-             H[twice_area][shape_index][height_m2][height_m1][height_m] =
-                 recurrence_value_with_lower_base(recurrence_sum);
+             STORE_RESULT(H[twice_area][shape_index][height_m2][height_m1][height_m], recurrence_sum);
              maybe_record_query(
                 H[twice_area][shape_index][height_m2][height_m1][height_m]);
 
@@ -1084,7 +1202,11 @@ printf("twice_area=%d  H[%d",twice_area,height_0);
 for (int coord=1; coord<=m; coord++) {
   if(height[coord]==n1)printf(" ."); else printf(" %d",height[coord]);
 }
+#ifdef GMP
+gmp_printf("] = %Zd\n",recurrence_sum);
+#else
 printf("] = %ld\n",recurrence_sum);
+#endif
 #endif
            } /* end of loop by height[m] */
          } /* end of loop by height[m-1] */
@@ -1116,7 +1238,8 @@ printf("] = %ld\n",recurrence_sum);
       for (int coord=1; coord<=m-3; coord++) shape_index+=n2pow[m-3-coord];
 
       int k=twice_area/(2*m);
-      printf("(* f(%d,%d) = *) %d",m,k,H[twice_area][k*shape_index][k][k][k]);
+      printf("(* f(%d,%d) = *) ",m,k);
+      PRINT_VAL(H[twice_area][k*shape_index][k][k][k]);
       if(k<n) puts(",");
       else puts("};");
      }
@@ -1244,8 +1367,13 @@ printf("] = %ld\n",recurrence_sum);
                  }
 
                  height_options_0[1] = (height_options_0[0] = height_m)-1;
+#ifdef GMP
 
-                 long recurrence_sum = 0;
+                 ACC_ZERO(recurrence_sum);     // reset the reusable global accumulator
+#else
+
+                 ACC recurrence_sum = 0;        // local: stays in a register
+#endif
                  subshape_code[0] = 0;
                  subshape_code[m] = 0;
                  subshape_code_max[0] = 0;
@@ -1398,12 +1526,11 @@ printf("] = %ld\n",recurrence_sum);
                      if (need_full_table
                          || height_0 > height_m
                          || subshape_code[0] <= subshape_code[m]) {
-                         recurrence_sum += inclusion_sign[m]
-                             * H[twice_area - removed_twice_area[m]]
+                         ACC_FMA(recurrence_sum, inclusion_sign[m], H[twice_area - removed_twice_area[m]]
                                 [shape_index + subshape_index_delta[m-3]]
                                 [height_options_m2[subshape_code[m-2]]]
                                 [height_options_m1[subshape_code[m-1]]]
-                                [height_options_0[subshape_code[m]]];
+                                [height_options_0[subshape_code[m]]]);
                      }
                      else{
                       // set encoded_index
@@ -1415,17 +1542,15 @@ printf("] = %ld\n",recurrence_sum);
                       }
 
                       // increment recurrence_sum
-                      recurrence_sum += inclusion_sign[m]
-                          * H[twice_area - removed_twice_area[m]]
+                      ACC_FMA(recurrence_sum, inclusion_sign[m], H[twice_area - removed_twice_area[m]]
                              [encoded_index]
                              [subshape_height_at(2)]
                              [subshape_height_at(1)]
-                             [height_0-1];
+                             [height_0-1]);
                      }
                  }     // end of loop over subshape_code
 
-                 H[twice_area][shape_index][height_m2][height_m1][height_m] =
-                 recurrence_value_with_lower_base(recurrence_sum);
+                 STORE_RESULT(H[twice_area][shape_index][height_m2][height_m1][height_m], recurrence_sum);
              maybe_record_query(
                 H[twice_area][shape_index][height_m2][height_m1][height_m]);
 
@@ -1434,7 +1559,11 @@ printf("twice_area=%d  H[%d",twice_area,height_0);
 for (int coord=1; coord<=m; coord++) {
   if(height[coord]==n1)printf(" ."); else printf(" %d",height[coord]);
 }
+#ifdef GMP
+gmp_printf("] = %Zd\n",recurrence_sum);
+#else
 printf("] = %ld\n",recurrence_sum);
+#endif
 #endif
                } /* end of loop by height[m] */
              } /* end of loop by height[m-1] */
@@ -1514,8 +1643,14 @@ printf("] = %ld\n",recurrence_sum);
          print_profile(lower_height);
          printf("]");
        }
+#ifdef GMP
+       printf("  (exact) *)\n");
+#else
        printf("  (mod %d) *)\n", modulus);
-       printf("query_value %d\n", query_value);
+#endif
+       printf("query_value ");
+       PRINT_VAL(query_value);
+       printf("\n");
      } else {
        printf("query_value not_found\n");
      }

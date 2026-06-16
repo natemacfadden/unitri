@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Independent cross-check of the floor-aware counter (na-query-gmp.c) against
-TOPCOM, via CYTools' Polytope.all_triangulations.
+Independent cross-check of the floor-aware counter (na-query.c, exact GMP
+back-end) against TOPCOM, via CYTools' Polytope.all_triangulations.
 
 TOPCOM is a separate codebase and algorithm, so agreement is real evidence the
 recurrence -- including the non-flat-floor (need_full_table) generalization and
@@ -22,6 +22,13 @@ Usage:  python3 check_topcom.py     (needs cytools + a GMP toolchain)
 import subprocess
 from cytools import Polytope
 
+MEM_CAP = 8e9   # bytes; skip configs whose pointer skeleton exceeds this
+
+
+def skeleton_bytes(m, n):
+    n2 = n + 2
+    return (m + 1) * (n2 ** (m - 3)) * (n2 + n2 * n2) * 8
+
 
 def build_dp(m, n):
     gmp = subprocess.check_output(["brew", "--prefix", "gmp"]).decode().strip()
@@ -29,7 +36,7 @@ def build_dp(m, n):
     subprocess.check_call(
         ["gcc", "-O2", f"-Dm={m}", f"-Dn={n}",
          f"-I{gmp}/include", f"-L{gmp}/lib",
-         "-o", out, "na-query-gmp.c", "-lgmp"])
+         "-DGMP", "-o", out, "na-query.c", "-lgmp"])
     return out
 
 
@@ -88,6 +95,10 @@ CONFIGS = [
 def main():
     fails = 0
     for m, n, cases in CONFIGS:
+        mem = skeleton_bytes(m, n)
+        if mem > MEM_CAP:
+            print(f"== m={m} n={n} == [SKIP] needs ~{mem/1e9:.0f} GB")
+            continue
         dp = build_dp(m, n)
         print(f"== m={m} n={n} ==")
         for name, U, L in cases:

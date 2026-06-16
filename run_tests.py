@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Test suite for na-query-gmp.c against known fine-triangulation counts.
+Test suite for na-query.c (exact GMP back-end) against known counts.
 
 Each case names a region (a profile of upper heights U over a floor L within an
-m x n bounding box) and an expected exact count.  The script builds
-na-query-gmp at the right (m, n), runs the query, and compares.
+m x n bounding box) and an expected exact count.  The script builds na-query.c
+with -DGMP at the right (m, n), runs the query, and compares.
 
 Sources for the expected values:
   1,3: https://arxiv.org/pdf/math/0211268
@@ -52,7 +52,7 @@ def build(m, n):
     subprocess.check_call(
         ["gcc", "-O2", f"-Dm={m}", f"-Dn={n}",
          f"-I{GMP}/include", f"-L{GMP}/lib",
-         "-o", out, "na-query-gmp.c", "-lgmp"])
+         "-DGMP", "-o", out, "na-query.c", "-lgmp"])
     return out
 
 
