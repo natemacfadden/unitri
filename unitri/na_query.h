@@ -526,8 +526,9 @@ static int lower_profile_is_zero(void){
 // point set.  This is verified against TOPCOM: na_query agrees exactly on
 // concave-upper / convex-lower profiles (see tests/check_topcom.py and
 // tests/test_topcom_convex.py) and undercounts otherwise.  The Python helper
-// unitri.points_to_profiles chooses a hull-tracing orientation when one exists
-// and refuses (raises) when none does, so callers never get a silent undercount.
+// unitri.points_to_profiles always builds such a profile: it reads the hull
+// boundary and marks between-row columns absent (the n+1 "." sentinel), so the
+// profiles trace the true hull and callers never get a silent undercount.
 #ifdef GMP
 static void recurrence_value_with_lower_base(mpz_t dst,
                                              const mpz_t recurrence_sum){
@@ -587,6 +588,23 @@ static int read_profile_line(int *profile, const char *name){
   return 1;
 }
 
+// With a flat floor the recurrence exploits the x<->m-x reflection symmetry and
+// stores only shapes with height_0 >= height_m, recovering the other half by
+// reflection; a query whose profile has height_0 < height_m therefore lives in
+// the unstored half and is never matched (it would report "not_found").  The
+// triangulation count is reflection-invariant, so reflect such a query (and its
+// flat, hence symmetric, floor) into the stored half.  A non-flat floor forces
+// the full table (need_full_table) and no reflection applies.
+static void reflect_query_into_stored_half(void){
+  if (need_full_table || query_height[0] >= query_height[m]) return;
+  for (int i=0, j=m; i<j; i++, j--) {
+    int t = query_height[i]; query_height[i] = query_height[j]; query_height[j] = t;
+    if (lower_enabled) {
+      t = lower_height[i]; lower_height[i] = lower_height[j]; lower_height[j] = t;
+    }
+  }
+}
+
 void read_query_profile(void){
   // upper (query) profile; a blank line or EOF here means "no query at all".
   // (Input format is documented in the README; see na_query_run's usage line.)
@@ -599,7 +617,10 @@ void read_query_profile(void){
   query_area = profile_area(query_height);
 
   // optional floor profile; a blank line or EOF means "no floor"
-  if (!read_profile_line(lower_height, "lower")) return;
+  if (!read_profile_line(lower_height, "lower")) {
+    reflect_query_into_stored_half();   // no floor: flat, reflection still applies
+    return;
+  }
 
   lower_enabled = 1;
   validate_profile(lower_height, "lower");
@@ -609,6 +630,7 @@ void read_query_profile(void){
     fprintf(stderr, "query profile must lie on or above lower profile\n");
     exit(1);
   }
+  reflect_query_into_stored_half();
 }
 
 int current_profile_is_query(void){
@@ -1711,6 +1733,7 @@ static int set_query(const int *upper, const int *lower){
     lower_is_flat = 1;
     need_full_table = 0;
   }
+  reflect_query_into_stored_half();
   return NA_OK;
 }
 

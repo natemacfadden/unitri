@@ -30,6 +30,9 @@ Scope/limits:
   - Enumeration is one triangulation at a time, so this is feasible only for
     SMALL regions (few thousand triangulations), not f(5,6)-scale counts.
 
+Each convex case is also requeried with the x<->m-x reflected profile (a
+unimodular map) to check the count is orientation-invariant.
+
 This validates on small cases; it is not a proof for all m,n.
 
 Usage:  python3 check_topcom.py     (needs cytools + a GMP toolchain)
@@ -128,9 +131,14 @@ def main():
             if status != "ok":
                 print(f"  [skip] {name:32s} ({status})")
                 continue
-            ok = (tc == q)
+            # x<->m-x reflection is unimodular: the reversed profile must agree
+            qr = dp_query(dp, m, n, U[::-1], None if L is None else L[::-1])
+            ok = (tc == q) and (qr == q)
             fails += not ok
-            print(f"  [{'OK ' if ok else 'BAD'}] {name:32s} topcom={tc:<8} dp={q}")
+            tag = f"topcom={tc:<8} dp={q}"
+            if qr != q:
+                tag += f"  NON-INVARIANT (reflected dp={qr})"
+            print(f"  [{'OK ' if ok else 'BAD'}] {name:32s} {tag}")
     raise SystemExit(1 if fails else 0)
 
 

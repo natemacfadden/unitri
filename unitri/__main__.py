@@ -30,8 +30,7 @@ import re
 import sys
 import time
 
-from .na_query import na_query
-from .profiles import points_to_profiles
+from .profiles import count_triangulations, points_to_profiles
 
 
 def main(argv=None):
@@ -67,7 +66,7 @@ def main(argv=None):
         log(f"  lower = {lower}")
         log("counting (exact; may take a few seconds for large regions)...")
         t = time.perf_counter()
-        count = na_query(m, n, upper, lower)
+        count = count_triangulations(points)
         log(f"done in {time.perf_counter() - t:.1f}s")
     except (ValueError, RuntimeError) as e:
         sys.exit(f"error: {e}")

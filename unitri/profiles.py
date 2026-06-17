@@ -18,17 +18,17 @@
 
 na_query counts triangulations of the region *under the column profiles*.  For
 that to equal the number of triangulations of a point set's convex hull, the
-profile polyline must trace the hull -- i.e. the upper profile must be concave
-and the lower convex.  Per-column min/max does NOT guarantee this: if a hull
-edge advances more than one column per lattice step, the profile dips inside the
-hull and na_query undercounts.
+profiles must trace the hull boundary.  We do this exactly: in a chosen
+orientation we read the hull's upper/lower boundary at each integer column, and
+where the boundary crosses *between* lattice rows (a hull edge spanning more than
+one column) we mark that column ABSENT with na_query's n+1 sentinel ("."), so the
+profiles describe the true hull rather than a per-column-max polyline that dips
+inside it.
 
-Triangulation counts are unimodular-invariant, so we search for an orientation
-in which the hull is "traced" (every hull edge advances <= 1 column) and use it.
-Such an orientation gives a concave upper / convex lower profile, on which
-na_query is exact (cross-checked against TOPCOM).  If no countable orientation
-exists (or the only ones have width < 3, na_query's lower bound), we raise
-rather than return a wrong count.
+Triangulation counts are unimodular-invariant, so we pick a minimal-width
+orientation (width >= 3, na_query's lower bound) to keep na_query's
+~ (n+2)^(m-1) cost down.  The result is cross-checked against TOPCOM.  If every
+orientation is too thin (width < 3) we raise rather than guess.
 """
 from math import gcd
 
@@ -172,10 +172,6 @@ def points_to_profiles(points, transform=False):
     the convex-hull boundary in a minimal-width orientation (absent columns get
     the n+1 sentinel).
 
-    NOTE: na_query rejects some orientations of a given set ("not found"); this
-    returns the minimal-width one, which na_query may not accept.  Use
-    count_triangulations to actually count -- it retries orientations.
-
     With transform=True also returns the unimodular ``T`` and ``shift`` mapping
     an original point ``p`` to its box coordinate ``(T @ p) - shift``.
     """
@@ -196,11 +192,12 @@ def points_to_profiles(points, transform=False):
 def count_triangulations(points):
     """Count the fine triangulations of a 2-D lattice point set -> Python int.
 
-    Tries hull-tracing orientations smallest-width first (na_query needs m >= 3
-    and costs ~ (n+2)^(m-1)); na_query rejects some orientations of a set with
-    "not found", so we advance to the next until one is accepted.  The count is
-    orientation-invariant and the hull+absent profile is exact, so the first
-    accepted orientation gives the correct count.  Requires the built extension.
+    Uses a hull-tracing orientation, smallest lattice width first (na_query needs
+    m >= 3 and costs ~ (n+2)^(m-1)).  The count is orientation-invariant and the
+    hull+absent profile is exact, so the smallest-width orientation suffices; we
+    fall through to the next only if na_query refuses one (a rare profile it can't
+    represent), since a different orientation may avoid it.  Requires the built
+    extension.
     """
     from .na_query import na_query
     pts = sorted({(int(x), int(y)) for x, y in points})

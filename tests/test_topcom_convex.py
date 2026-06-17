@@ -23,6 +23,10 @@ returns a count that EXACTLY matches TOPCOM, or it raises (point sets na_query
 cannot represent without undercounting -- those needing "long-diagonal"
 triangulations).  A returned-but-wrong count is a failure.
 
+Each decided set is also counted under the dihedral (D4) symmetries of the
+square: the count must be the same in every orientation (a count that depends on
+orientation is a bug), and equal to TOPCOM.
+
     python3 tests/test_topcom_convex.py
 """
 import random
@@ -31,6 +35,7 @@ import sys
 from cytools import Polytope
 
 import unitri
+from transforms import COMPACT, invariant_count
 
 SEED = 20260617
 TRIALS = 4000
@@ -51,7 +56,7 @@ def topcom_count(P, cap):
 
 def main():
     rng = random.Random(SEED)
-    matched = mismatched = uncountable = 0
+    matched = mismatched = uncountable = noninvariant = 0
     for _ in range(TRIALS):
         coord = rng.choice([3, 4, 5])
         cloud = {(rng.randint(0, coord), rng.randint(0, coord))
@@ -71,7 +76,13 @@ def main():
         if tc is None:
             continue
         try:
-            dp = unitri.count_triangulations(pts)
+            # one count per dihedral image -- must all agree (orientation
+            # independence) and equal TOPCOM
+            dp = invariant_count(pts, transforms=COMPACT)
+        except AssertionError as e:
+            noninvariant += 1
+            print(f"  NON-INVARIANT pts={pts}: {e}")
+            continue
         except (ValueError, RuntimeError):
             uncountable += 1              # honest refusal -- fine
         else:
@@ -86,8 +97,9 @@ def main():
     print(f"matched TOPCOM            = {matched}")
     print(f"raised (na_query can't)   = {uncountable}")
     print(f"MISMATCHED (must be 0)    = {mismatched}")
-    print("OK" if mismatched == 0 else "FAILED")
-    sys.exit(1 if mismatched else 0)
+    print(f"NON-INVARIANT (must be 0) = {noninvariant}")
+    print("OK" if mismatched == 0 and noninvariant == 0 else "FAILED")
+    sys.exit(1 if (mismatched or noninvariant) else 0)
 
 
 if __name__ == "__main__":

@@ -20,7 +20,9 @@ Test suite for na-query.c (big-integer GMP back-end) against known counts.
 
 Each case names a region (a profile of upper heights U over a floor L within an
 m x n bounding box) and an expected exact count.  The script builds na-query.c
-with -DGMP at the right (m, n), runs the query, and compares.
+with -DGMP at the right (m, n), runs the query, and compares.  It also requeries
+the x<->m-x reflected profile (a unimodular map) and checks the count is
+unchanged.
 
 Sources for the expected values:
   1,3: https://arxiv.org/pdf/math/0211268
@@ -99,6 +101,13 @@ def verdict(expected, got):
     return "OK" if got == expected else f"MISMATCH (got {got}, expected {expected})"
 
 
+def reflect(profile):
+    # x <-> m-x is a unimodular map; reversing the profile must not change the
+    # count.  (This is exactly the symmetry the flat-floor recurrence exploits,
+    # so it directly exercises the height_0 < height_m reflection handling.)
+    return None if profile is None else profile[::-1]
+
+
 def main():
     binary = build()
     fails = 0
@@ -110,6 +119,10 @@ def main():
             continue
         got = run_query(binary, m, n, U, L)
         v = verdict(expected, got)
+        # unimodular (reflection) invariance: the reversed profile must agree
+        rev = run_query(binary, m, n, reflect(U), reflect(L))
+        if got is not None and rev != got:
+            v = f"NON-INVARIANT (reflected profile gave {rev}, expected {got})"
         fails += not v.startswith("OK")
         print(f"[{'PASS' if v.startswith('OK') else 'FAIL'}] {name}\n       {v}")
     raise SystemExit(1 if fails else 0)
