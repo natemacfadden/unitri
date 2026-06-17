@@ -1,0 +1,29 @@
+\begin{picture}(0,0)%
+\includegraphics{anclin2.pstex}%
+\end{picture}%
+\setlength{\unitlength}{1973sp}%
+%
+\begingroup\makeatletter\ifx\SetFigFont\undefined%
+\gdef\SetFigFont#1#2#3#4#5{%
+  \reset@font\fontsize{#1}{#2pt}%
+  \fontfamily{#3}\fontseries{#4}\fontshape{#5}%
+  \selectfont}%
+\fi\endgroup%
+\begin{picture}(6174,3346)(297,-3305)
+\put(3526,-1636){\makebox(0,0)[lb]{\smash{\SetFigFont{11}{13.2}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$v$}%
+}}}
+\put(5776,-2386){\makebox(0,0)[lb]{\smash{\SetFigFont{11}{13.2}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\ell$}%
+}}}
+\put(2401,-3211){\makebox(0,0)[b]{\smash{\SetFigFont{11}{13.2}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$v'$}%
+}}}
+\put(4501,-3211){\makebox(0,0)[b]{\smash{\SetFigFont{11}{13.2}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$v''$}%
+}}}
+\put(3001,-2536){\makebox(0,0)[b]{\smash{\SetFigFont{11}{13.2}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$v_1$}%
+}}}
+\put(3601,-2536){\makebox(0,0)[b]{\smash{\SetFigFont{11}{13.2}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$v_2$}%
+}}}
+\put(2101,-211){\makebox(0,0)[b]{\smash{\SetFigFont{11}{13.2}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\bar v''$}%
+}}}
+\put(4201,-211){\makebox(0,0)[b]{\smash{\SetFigFont{11}{13.2}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\bar v'$}%
+}}}
+\end{picture}

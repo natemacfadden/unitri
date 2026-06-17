@@ -10,18 +10,24 @@ Stepniczka and Nate MacFadden.
 
 ## Files
 
+The counter lives in the `unitri/` package (C single-header + thin CLI + Cython
+binding); validation suites are in `tests/`; the rest are standalone tools.
+
 | file | what it does |
 |------|--------------|
 | `orig.c` | Orevkov's original counter (unmodified); computes **modulo a prime**. |
-| `na_query.h` | The reworked/generalized counter as an stb-style single header. Width `m` and height `n` are runtime arguments. Two compile-time back-ends: **modulo a prime** (default) or **arbitrary-precision** big integers (`-DGMP`, links libgmp). Both give exact counts -- the modular build via CRT over several primes. |
-| `na-query.c` | Thin CLI: pulls in `na_query.h`'s implementation and forwards `argc/argv`. Reads `<m> <n> [prime_index]` plus an optional upper (and lower/floor) profile on stdin, and reports that region's count. |
+| `unitri/na_query.h` | The reworked/generalized counter as an stb-style single header. Width `m` and height `n` are runtime arguments. Two compile-time back-ends: **modulo a prime** (default) or **arbitrary-precision** big integers (`-DGMP`, links libgmp). Both give exact counts -- the modular build via CRT over several primes. |
+| `unitri/na-query.c` | Thin CLI: pulls in `na_query.h`'s implementation and forwards `argc/argv`. Reads `<m> <n> [prime_index]` plus an optional upper (and lower/floor) profile on stdin, and reports that region's count. |
+| `unitri/na_query.pyx` | Cython binding exposing `na_query(m, n, upper, lower=None)` -> Python int. Calls the counter in-process (no subprocess, no stdout parsing), built against the big-integer back-end. |
+| `pyproject.toml`, `setup.py`, `MANIFEST.in` | Packaging: build the `unitri` package / its `unitri.na_query` extension. |
 | `crt_combine.py` | Combines per-prime residues from the default build into the exact count via the Chinese Remainder Theorem. |
-| `check_topcom.py` | Independent cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
-| `run_tests.py` | Test suite: checks several regions against known counts (literature / TOPCOM). |
+| `tests/check_topcom.py` | Independent cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
+| `tests/run_tests.py` | Test suite: checks several regions against known counts (literature / TOPCOM). |
 | `profile.sh` | Reports wall time (min/mean over `ITERS` runs) and peak memory of a command. |
 | `sample_triangulation.py` | Self-contained count / uniform-sample / enumerate of fine triangulations of a lattice polygon (general polygons; small only). |
 | `regularity.py` | Checks whether a triangulation is regular, via `regfans` (`pip install regfans`). |
 | `baseline.txt` | Reference outputs used to check the rework. |
+| `LICENSE` | GPL-3.0-or-later (the rework; `orig.c` remains Stepan Orevkov's). |
 
 ## Build
 
@@ -31,14 +37,14 @@ is a thin CLI that pulls in its implementation. Width `m` and height `n` are
 rectangle. The default build computes **modulo a prime**:
 
 ```sh
-gcc -O2 -o na-query na-query.c
+gcc -O2 -o na-query unitri/na-query.c
 ```
 
 Add `-DGMP` for the **big-integer** back-end (one run gives the whole
 count, no CRT needed); this links libgmp:
 
 ```sh
-gcc -O2 -DGMP -o na-query na-query.c -lgmp
+gcc -O2 -DGMP -o na-query unitri/na-query.c -lgmp
 ```
 
 If GMP isn't on the default search path (e.g. Homebrew on macOS), point the
@@ -47,7 +53,7 @@ shown; on Intel macOS use `/usr/local/...`:
 
 ```sh
 gcc -O2 -DGMP -I/opt/homebrew/opt/gmp/include -L/opt/homebrew/opt/gmp/lib \
-    -o na-query na-query.c -lgmp
+    -o na-query unitri/na-query.c -lgmp
 ```
 
 ## Querying a region (upper / lower boundaries)
@@ -91,4 +97,27 @@ echo "0 . 3 . 0" | ./na-query 4 4
 The result prints as `query_value <count>` -- the whole integer with `-DGMP`, or a
 residue mod the chosen prime in the default build (combine several primes with
 `crt_combine.py` to recover the exact count).
+
+## Python (Cython binding)
+
+`unitri/na_query.pyx` wraps the in-process counting API so you can count from
+Python directly -- no subprocess, no stdout parsing. Build the extension (needs
+Cython and libgmp):
+
+```sh
+pip install -e .                      # or: python3 setup.py build_ext --inplace
+```
+
+Then:
+
+```python
+import unitri
+unitri.na_query(4, 4, [4, 4, 4, 4, 4])           # 736983568  (the 4x4 square)
+unitri.na_query(3, 12, [12, 8, 4, 0])            # 668517487  (a base-3 triangle)
+unitri.na_query(4, 4, [4,4,4,4,4], [0,1,0,1,0])  # 14032211   (over a non-flat floor)
+```
+
+`unitri.na_query(m, n, upper, lower=None)` returns the exact count as a Python
+int (arbitrary precision). `upper`/`lower` are the `m+1` boundary heights, as in
+the CLI; omit `lower` for a flat floor at 0.
 

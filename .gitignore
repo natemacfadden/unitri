@@ -18,3 +18,9 @@ a.out
 # built executables (extensionless, named after their .c source)
 na-query
 na-query-gmp
+
+# Cython binding build artifacts (na_query.pyx -> na_query.c -> .so)
+na_query.c
+*.so
+build/
+*.egg-info/

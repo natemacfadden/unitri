@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+# =============================================================================
+#    Copyright (C) 2026  Nate MacFadden for the Liam McAllister Group
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
 """
 Test suite for na-query.c (big-integer GMP back-end) against known counts.
 
@@ -16,9 +32,12 @@ Memory for this code's index skeleton grows like (n+2)^(m-1); cases needing
 more than MEM_CAP are skipped (they require a big-memory machine).
 """
 
+import os
 import subprocess
 
 GMP = subprocess.check_output(["brew", "--prefix", "gmp"]).decode().strip()
+NA_QUERY_C = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "..", "unitri", "na-query.c")
 MEM_CAP = 8e9   # bytes; skip cases whose pointer skeleton exceeds this
 
 # name, m, n, upper U, floor L (None = flat 0), expected count
@@ -53,7 +72,7 @@ def build():
     subprocess.check_call(
         ["gcc", "-O2",
          f"-I{GMP}/include", f"-L{GMP}/lib",
-         "-DGMP", "-o", out, "na-query.c", "-lgmp"])
+         "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
     return out
 
 

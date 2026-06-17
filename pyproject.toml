@@ -1,0 +1,35 @@
+[build-system]
+requires = [
+    "setuptools>=64",
+    "cython",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unitri"
+version = "0.1.0"
+description = "Counting primitive lattice triangulations of an m x n rectangle"
+authors = [{ name = "Nate MacFadden for the Liam McAllister Group" }]
+readme = "README.md"
+license = "GPL-3.0-or-later"
+keywords = ["lattice", "triangulation", "primitive", "unimodular", "rectangle"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Cython",
+    "Programming Language :: C",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+requires-python = ">=3.9"
+
+# cross-check suite (tests/check_topcom.py) only; the extension itself needs
+# nothing beyond a C toolchain + libgmp
+[project.optional-dependencies]
+test = ["cytools"]
+
+[tool.setuptools]
+packages = ["unitri"]
+
+[tool.setuptools.package-data]
+unitri = ["*.pyx", "*.h", "*.c"]

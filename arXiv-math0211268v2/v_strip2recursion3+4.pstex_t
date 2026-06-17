@@ -1,0 +1,25 @@
+\begin{picture}(0,0)%
+\includegraphics{v_strip2recursion3+4.pstex}%
+\end{picture}%
+\setlength{\unitlength}{1973sp}%
+%
+\begingroup\makeatletter\ifx\SetFigFont\undefined%
+\gdef\SetFigFont#1#2#3#4#5{%
+  \reset@font\fontsize{#1}{#2pt}%
+  \fontfamily{#3}\fontseries{#4}\fontshape{#5}%
+  \selectfont}%
+\fi\endgroup%
+\begin{picture}(5100,3183)(2251,-4027)
+\put(2251,-1636){\makebox(0,0)[rb]{\smash{\SetFigFont{10}{12.0}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$A$}%
+}}}
+\put(3751,-1036){\makebox(0,0)[lb]{\smash{\SetFigFont{10}{12.0}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$B$}%
+}}}
+\put(5851,-2911){\makebox(0,0)[rb]{\smash{\SetFigFont{10}{12.0}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$a$}%
+}}}
+\put(7351,-3436){\makebox(0,0)[lb]{\smash{\SetFigFont{10}{12.0}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$b$}%
+}}}
+\put(5851,-1636){\makebox(0,0)[rb]{\smash{\SetFigFont{10}{12.0}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$A$}%
+}}}
+\put(7351,-1036){\makebox(0,0)[lb]{\smash{\SetFigFont{10}{12.0}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$B$}%
+}}}
+\end{picture}

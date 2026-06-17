@@ -38,29 +38,87 @@
 // HEADER
 // ======
 
-// Run the counter end to end, CLI-style: parse args and an optional target
-// profile from stdin, evaluate the recurrence, and print either the f-table or
-// the queried cell's count.  Returns a process exit status (0 on success).
-//
-// This is a transitional entry point -- a later migration step will split the
-// pure count out of the CLI as a status-code + out-parameter API, in the
-// box_enum.h style.
-//
-// Compile-time configuration (define before the implementation include, e.g.
-// with -D on the command line):
-//   m, n : bounding-box width / height (defaults 5 / 6; require m >= 3)
-//   GMP  : if defined, use big-integer mpz_t arithmetic (link with -lgmp); otherwise
-//          the recurrence is evaluated modulo a prime
+// Value back-end (select with -DGMP before including): a count is a big-integer
+// mpz_t (-DGMP) or an int residue mod a prime (default).  VAL is that type and
+// VAL_INIT initializes one (mpz_init under GMP, a no-op otherwise) -- a caller of
+// na_query_count declares `VAL c; VAL_INIT(c);` and passes &c.
+#ifdef GMP
+#include <gmp.h>
+typedef mpz_t VAL;
+#define VAL_INIT(x)  mpz_init(x)
+#else
+typedef int VAL;
+#define VAL_INIT(x)  ((void)0)
+#endif
+
+/*
+CLI driver.  Parses ``<m> <n> [prime_index]`` and an optional target profile on
+stdin, runs the recurrence, and prints either the flat-square f-table (no query)
+or the queried cell's count.  The actual counting is na_query_count below -- the
+in-process API that this CLI and any binding both call.
+
+Compile-time configuration (define before the implementation include):
+    GMP : big-integer mpz_t arithmetic (link -lgmp); otherwise the recurrence is
+          evaluated modulo a prime.
+
+Parameters
+----------
+argc, argv : int, char**
+    Command line.  argv[1] = m (width, >= 3), argv[2] = n (height); optional
+    argv[3] = prime_index, which selects the modulus in the default build and is
+    ignored under -DGMP.  An optional target profile is read from stdin.
+
+Returns
+-------
+int
+    Process exit status: 0 on success, 1 on a usage error, 2 if another call is
+    already in progress.
+*/
 int na_query_run(int argc, char **argv);
 
-// Status codes returned by na_query_count (the in-process counting API, defined
-// in the implementation; it writes the count through a VAL* out-parameter).
+// status codes returned by na_query_count (also documented in its Returns)
 enum {
   NA_OK          =  0,
   NA_ERR_BAD_M   = -1,   // m < 3
   NA_ERR_PROFILE = -2,   // invalid query (e.g. upper profile below the floor)
   NA_ERR_BUSY    = -3,   // a call is already in progress (not reentrant)
 };
+
+/*
+Count fine (primitive) triangulations of the region between an upper profile and
+an optional floor, inside an ``m x n`` box.  This is the in-process counting API
+(the CLI na_query_run and the Cython binding both call it): it writes the count
+through ``out_count`` and returns a status code.  Not reentrant -- a concurrent
+or recursive call returns NA_ERR_BUSY (parallelize with separate processes).
+
+Parameters
+----------
+m : int
+    Bounding-box width; must be >= 3.
+n : int
+    Bounding-box height; profile heights range over [0, n].
+upper : const int* restrict
+    Upper boundary: m+1 heights h_0 .. h_m.  Use n+1 as the sentinel for an
+    absent vertex (the boundary passes between lattice points there).
+lower : const int* restrict
+    Floor: m+1 heights, or NULL for a flat floor at 0.  The upper profile must
+    lie on or above the floor.
+out_count : VAL* restrict
+    Written with the count.  A VAL is an mpz_t (-DGMP) or an int residue mod a
+    prime (default); declare ``VAL c; VAL_INIT(c);`` and pass ``&c``.
+
+Returns
+-------
+int
+    Status code:
+        NA_OK          ( 0) : success
+        NA_ERR_BAD_M   (-1) : m < 3
+        NA_ERR_PROFILE (-2) : invalid query (e.g. upper profile below the floor)
+        NA_ERR_BUSY    (-3) : a call is already in progress (not reentrant)
+*/
+int na_query_count(int m, int n,
+                   const int * restrict upper, const int * restrict lower,
+                   VAL * restrict out_count);
 
 // IMPLEMENTATION
 // ==============
@@ -70,19 +128,13 @@ enum {
 #include<stdlib.h>
 #include<string.h>
 #include<stdatomic.h> // single-call-at-a-time reentrancy guard (see na_query_run)
-#ifdef GMP
-#include<gmp.h>
-#endif
 
-// value back-end: a table cell is a big-integer mpz_t (-DGMP) or an int residue
-// mod a prime (default).  VAL is the cell type; ACC is the per-cell recurrence
-// accumulator (a wider long in the mod-p build, to sum signed products before
-// reducing).  The macros below are the only places the two back-ends differ
-// in the hot path, so the rest of the code is back-end agnostic.
+// internal back-end helpers.  VAL (the cell type) and VAL_INIT are public and
+// live in the HEADER above; here we add ACC -- the per-cell recurrence
+// accumulator, a wider long in the mod-p build to sum signed products before
+// reducing -- and the macros used only inside the implementation.
 #ifdef GMP
-typedef mpz_t VAL;
 typedef mpz_t ACC;
-#define VAL_INIT(x)            mpz_init(x)
 #define VAL_SET_UI(x,u)        mpz_set_ui((x), (u))
 #define ACC_ZERO(a)            mpz_set_ui((a), 0)
 #define ACC_FMA(a,sign,cell)   do { if ((sign) > 0) mpz_add((a),(a),(cell)); \
@@ -91,9 +143,7 @@ typedef mpz_t ACC;
 #define PRINT_VAL(cell)        gmp_printf("%Zd", (cell))
 #define VAL_OUT_SET(outp,src)  mpz_set(*(outp), (src))   // *outp is mpz_t -> ptr
 #else
-typedef int  VAL;
 typedef long ACC;
-#define VAL_INIT(x)            ((void)0)
 #define VAL_SET_UI(x,u)        ((x) = (u))
 #define ACC_ZERO(a)            ((a) = 0)
 #define ACC_FMA(a,sign,cell)   ((a) += (sign) * (cell))
@@ -126,9 +176,6 @@ int n1, n2;  // n+1, n+2
 // ---------------
 // debug flag
 //#define DEBUG
-
-// memory estimation flag (does not do full calculations if = 1)
-int only_mem = 0;
 
 
 #ifdef GMP
@@ -252,11 +299,14 @@ int cursor, height_equation_value, height_0, shape_index;
 // target profile query read from stdin; disabled when query_enabled is 0
 int query_enabled = 0;
 int query_found = 0;
+
+// suppress all diagnostic output (the stderr progress line); set by the
+// in-process API (na_query_count) so a library call is silent, left 0 by the CLI
+int quiet = 0;
 int query_area = -1;
 int query_height[100];
 int lower_enabled = 0;
 int lower_is_flat = 1;
-int lower_area = 0;
 int lower_height[100];
 VAL query_value;          // count at the query profile
 #ifdef GMP
@@ -466,8 +516,18 @@ static int lower_profile_is_zero(void){
 // A non-flat floor needs the full table (need_full_table): the original code
 // kept only the height_0 >= height_m half via the x<->m-x reflection, which is
 // wrong for an asymmetric floor.
-// The arbitrary-floor generalization is cross-checked against TOPCOM (an
-// independent enumerator) on small convex regions; see check_topcom.py.
+//
+// SCOPE / KNOWN LIMITATION: this counts triangulations of the region *under the
+// profile polylines*.  That equals the number of triangulations of a point
+// set's convex hull ONLY when the profiles trace the hull -- i.e. the upper
+// profile is concave and the lower convex.  If a profile dips inside the hull
+// (a hull edge advancing more than one column), the recurrence cannot form the
+// "long-diagonal" triangles that bulge above the dip, so it UNDERCOUNTS that
+// point set.  This is verified against TOPCOM: na_query agrees exactly on
+// concave-upper / convex-lower profiles (see tests/check_topcom.py and
+// tests/test_topcom_convex.py) and undercounts otherwise.  The Python helper
+// unitri.points_to_profiles chooses a hull-tracing orientation when one exists
+// and refuses (raises) when none does, so callers never get a silent undercount.
 #ifdef GMP
 static void recurrence_value_with_lower_base(mpz_t dst,
                                              const mpz_t recurrence_sum){
@@ -545,7 +605,6 @@ void read_query_profile(void){
   validate_profile(lower_height, "lower");
   lower_is_flat = profile_is_flat_present(lower_height);
   need_full_table = lower_enabled && !lower_is_flat;
-  lower_area = profile_area(lower_height);
   if (!profile_geq(query_height, lower_height)) {
     fprintf(stderr, "query profile must lie on or above lower profile\n");
     exit(1);
@@ -739,17 +798,17 @@ static int na_query_compute(void){
   for (twice_area=0; twice_area<=m; twice_area++) {
     mem = n2pow[m-3]*sizeof(VAL ***);
     alloc_pointers += mem;
-    if (!only_mem) H[twice_area] = (VAL ****)malloc( mem );
+    H[twice_area] = (VAL ****)malloc( mem );
 
     for (int coord=0; coord<n2pow[m-3]; coord++) {
       mem = n2*sizeof(VAL **);
       alloc_pointers += mem;
-      if( ! only_mem ) H[twice_area][coord] = (VAL ***)malloc( mem );
+      H[twice_area][coord] = (VAL ***)malloc( mem );
 
       for (height_m2=0; height_m2<n2; height_m2++) {
         mem = n2*sizeof(VAL *);
         alloc_pointers += mem;
-        if (!only_mem) H[twice_area][coord][height_m2] = (VAL **)malloc( mem );
+        H[twice_area][coord][height_m2] = (VAL **)malloc( mem );
       }
     }
   }
@@ -760,20 +819,14 @@ static int na_query_compute(void){
   // subshape_code value 2 means that the vertex is absent in the subshape
   height_options_0[2] = height_options_m1[2] = height_options_m2[2] = n+1;
 
-  if (!only_mem) {
-    // allocate/use memory for storing the data (not just pointers)
-    VAL_INIT(memH0);
-    memH[0] = &memH0;
+  // base case: the empty shape has one (trivial) triangulation
+  VAL_INIT(memH0);
+  memH[0] = &memH0;
 #ifdef GMP
-    memH_cells[0] = 1;
+  memH_cells[0] = 1;
 #endif
-
-    // [twice_area][coord][m2][m1]
-    H[0][0][0][0] = memH[0];
-
-    // [twice_area][coord][m2][m1][m]
-    VAL_SET_UI(H[0][0][0][0][0], lower_profile_is_zero() ? 1 : 0);
-  }
+  H[0][0][0][0] = memH[0];                                  // [area][coord][m2][m1]
+  VAL_SET_UI(H[0][0][0][0][0], lower_profile_is_zero() ? 1 : 0);  // [..][m]
 
   // =========
   // main loop
@@ -781,8 +834,9 @@ static int na_query_compute(void){
   for (twice_area=1; twice_area<=2*m*n; twice_area++) {
 
     // on a query the f(m,k) table is suppressed, so show progress instead
-    // (stderr, one rewriting line); no query: the table is the progress
-    if (query_enabled) {
+    // (stderr, one rewriting line); no query: the table is the progress.
+    // quiet suppresses it entirely (library calls via na_query_count)
+    if (query_enabled && !quiet) {
       fprintf(stderr, "\r  computing area %d / %d ...", twice_area, query_area);
     }
 
@@ -798,21 +852,19 @@ static int na_query_compute(void){
 
     // for H[twice_area>m], just use memory allocated for H[twice_area-m-1]
     // (said memory is already allocated; H[twice_area-m-1] is no longer needed)
-    if (twice_area>m && !only_mem) {
+    if (twice_area>m) {
       H[twice_area] = H[twice_area-m-1];
     }
-    
+
     // free unnecessary value memory
 #ifdef GMP
     if (twice_area>m+1) {
-      if (!only_mem) {
-        long old = twice_area-m-1;
-        for (long i=0; i<memH_cells[old]; i++) mpz_clear(memH[old][i]);
-        free(memH[old]);
-      }
+      long old = twice_area-m-1;
+      for (long i=0; i<memH_cells[old]; i++) mpz_clear(memH[old][i]);
+      free(memH[old]);
 #else
-    if (twice_area>m+1) { 
-      if (!only_mem) free(memH[twice_area-m-1]);
+    if (twice_area>m+1) {
+      free(memH[twice_area-m-1]);
 #endif
       alloc_total -= alloc_memH[twice_area-m-1];
     }
@@ -1034,17 +1086,13 @@ static int na_query_compute(void){
 
      if( alloc_total > max_alloc_total ) max_alloc_total = alloc_total;
 
-    if (only_mem) {
-      continue;
-    } else {
 #ifdef GMP
-      memH[twice_area] = (mpz_t *)malloc( mem );
-      memH_cells[twice_area] = mem_page_size;
-      for (long i=0; i<mem_page_size; i++) mpz_init(memH[twice_area][i]);
+    memH[twice_area] = (mpz_t *)malloc( mem );
+    memH_cells[twice_area] = mem_page_size;
+    for (long i=0; i<mem_page_size; i++) mpz_init(memH[twice_area][i]);
 #else
-      memH[twice_area] = (int *)malloc( mem );
+    memH[twice_area] = (int *)malloc( mem );
 #endif
-    }
 
      allo = 0;
 
@@ -1657,13 +1705,11 @@ static int set_query(const int *upper, const int *lower){
     lower_enabled   = 1;
     lower_is_flat   = profile_is_flat_present(lower_height);
     need_full_table = !lower_is_flat;
-    lower_area      = profile_area(lower_height);
     if (!profile_geq(query_height, lower_height)) return NA_ERR_PROFILE;
   } else {
     lower_enabled = 0;
     lower_is_flat = 1;
     need_full_table = 0;
-    lower_area = 0;
   }
   return NA_OK;
 }
@@ -1673,11 +1719,13 @@ static int set_query(const int *upper, const int *lower){
 // the count through *out_count (a VAL: mpz_t under -DGMP, else int -- pass &c
 // for `VAL c; VAL_INIT(c);`) and returns a status code.  Not reentrant; a
 // concurrent/recursive call returns NA_ERR_BUSY.
-int na_query_count(int m_arg, int n_arg, const int *upper, const int *lower,
-                   VAL *out_count){
+int na_query_count(int m_arg, int n_arg,
+                   const int * restrict upper, const int * restrict lower,
+                   VAL * restrict out_count){
   if (atomic_exchange(&na_query_busy, 1)) return NA_ERR_BUSY;
   if (m_arg < 3) { atomic_store(&na_query_busy, 0); return NA_ERR_BAD_M; }
   m = m_arg;  n = n_arg;  n1 = n + 1;  n2 = n + 2;
+  quiet = 1;   // a library call is silent (no stderr progress)
 #ifndef GMP
   if (modulus == 0) modulus = prime[0];   // default modulus if caller set none
 #endif
@@ -1718,6 +1766,7 @@ int na_query_run( int argc, char *argv[] ){
   }
   n1 = n + 1;
   n2 = n + 2;
+  quiet = 0;   // CLI: show the stderr progress line
 #ifndef GMP
   modulus = prime[parse_prime_index(argc, argv)];
 #endif
@@ -1767,6 +1816,15 @@ int na_query_run( int argc, char *argv[] ){
   atomic_store(&na_query_busy, 0);
   return 0;
 }
+
+// internal macros are scoped to the implementation; the public VAL / VAL_INIT
+// (defined in the HEADER) intentionally remain
+#undef VAL_SET_UI
+#undef ACC_ZERO
+#undef ACC_FMA
+#undef STORE_RESULT
+#undef PRINT_VAL
+#undef VAL_OUT_SET
 
 #endif // NA_QUERY_IMPLEMENTATION
 #endif // NA_QUERY_H

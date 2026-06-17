@@ -1,0 +1,203 @@
+% style file bcc2003.sty 
+% - for Proceedings of the 2003 British Combinatorial Conference
+%   based on bcc.sty created and maintained by Rosemary Bailey
+%   and by John D Lamb, J.D.Lamb@ukc.ac.uk (for the Kent BCC, 1999)
+% - incorporating changes by James Hirschfeld for BCC2001, Sussex
+% - also revisions by Chris Wensley for BCC2003, Bangor
+
+% Extra packages
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{latexsym}
+
+% information for front matter and head matter and back matter
+\def\@bccname{My name}
+\def\@bcctitle{My title}
+\def\@bccshorttitle{Short title}
+\def\@bccaddress{My address}
+\def\bccname#1{\def\@bccname{#1}}
+\def\bcctitle#1{\def\@bcctitle{#1}\def\@bccshorttitle{#1}}
+\def\bccshorttitle#1{\def\@bccshorttitle{#1}}
+\def\bccaddress#1{\def\@bccaddress{#1}}
+\newif\ifemail
+\emailfalse
+\def\bccemail#1{\def\@bccemail{#1}\emailtrue}
+
+% sizes and pagestyles dictated by CUP
+\setlength{\textheight}{225mm}
+\setlength{\textwidth}{140mm}
+\pagestyle{myheadings}
+\def\@evenhead{\thepage\hfil\@bccname}
+\def\@oddhead{\@bccshorttitle\hfil\thepage}
+
+% layout style decided by RAB after consulting CUP and PJC
+% frontmatter and backmatter
+\newcommand{\makebcctitle}{\begin{center}
+   \Large\bf \@bcctitle\\[17pt]
+    \end{center}
+    \begin{center}
+    \large
+    \@bccname\\[14pt]
+    \end{center}
+    \thispagestyle{plain}}
+
+% Address and acknowledgments
+\newcommand{\thankyou}[1]{\subsection*{Acknowledgements}#1}
+\newcommand{\myaddress}{\par
+    \vspace{1cm}\begin{flushright}\begin{tabular}[t]{r}
+            \rm\@bccaddress
+            \ifemail \\ \tt \@bccemail \fi
+            \end{tabular}\end{flushright}}
+
+% Section commands
+\def\section{\@startsection{section}{1}{\z@}{3.25ex plus 1ex minus
+    .2ex}{2ex plus .2ex}{\normalfont\large\sffamily\bfseries\raggedright}}
+\def\subsection{\@startsection{subsection}{2}{\z@}{3ex plus 1ex minus .2ex}%
+       {1.5ex plus .2ex}{\normalfont\normalsize\sffamily\bfseries\raggedright}}
+\def\subsubsection{\@startsection{subsubsection}{3}{\z@}{3ex plus 1ex
+    minus 0.2ex}{-1em}{\normalfont\normalsize\sffamily\bfseries}}
+
+% Numbering equations (added by JWPH)
+ \makeatletter
+ \@addtoreset{equation}{section}
+ \makeatother  
+ \renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+ 
+% Theorems etc - commands to change the type face in theorems
+\newif\ifplaintheorems
+\def\plaintheorems{\plaintheoremstrue}
+\def\fancytheorems{\plaintheoremsfalse}
+
+\let\thmheadfont\bf
+\let\thmcontfont\sl
+\def\theoremheadfontis#1{\def\thmheadfont{#1}}
+\def\theoremcontfontis#1{\def\thmcontfont{#1}}
+
+\def\@xnthm#1#2[#3]{\expandafter\@ifdefinable\csname #1\endcsname
+{\@definecounter{#1}\@addtoreset{#1}{#3}%
+\expandafter\xdef\csname the#1\endcsname{\expandafter\noexpand
+  \csname the#3\endcsname \@thmcountersep \@thmcounter{#1}}%
+     \ifplaintheorems \global\@namedef{#1}{\@thm{#1}{#2}}%
+     \else \global\@namedef{#1}{\thmcontfont\@thm{#1}{#2}}\fi%
+\global\@namedef{end#1}{\@endtheorem}}}
+
+\def\@ynthm#1#2{\expandafter\@ifdefinable\csname #1\endcsname
+{\@definecounter{#1}%
+\expandafter\xdef\csname the#1\endcsname{\@thmcounter{#1}}%
+     \ifplaintheorems \global\@namedef{#1}{\@thm{#1}{#2}}%
+     \else \global\@namedef{#1}{\thmcontfont\@thm{#1}{#2}}\fi%
+\global\@namedef{end#1}{\@endtheorem}}}
+
+\def\@othm#1[#2]#3{\expandafter\@ifdefinable\csname #1\endcsname
+  {\global\@namedef{the#1}{\@nameuse{the#2}}%
+\ifplaintheorems \global\@namedef{#1}{\@thm{#2}{#3}}%
+\else \global\@namedef{#1}{\thmcontfont\@thm{#2}{#3}}\fi%
+\global\@namedef{end#1}{\@endtheorem}}}
+
+\def\@begintheorem#1#2%
+     {\trivlist\item[\hskip\labelsep
+     \thmheadfont #1\ #2\unskip]}
+\def\@opargbegintheorem#1#2#3
+     {\trivlist\item[\hskip\labelsep
+     \thmheadfont #1\ #2\unskip\ (#3)]}
+
+% unnumbered theorems as \newtheorem{thm}[unnumber]{Theorem}
+\newcounter{unnumber}
+\renewcommand{\theunnumber}{}
+
+% Pre-provided theorem-like environments
+\fancytheorems
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{cor}[theorem]{Corollary}
+\newtheorem{prop}[theorem]{Proposition}
+\newtheorem{result}[theorem]{Result}
+\newtheorem{conj}[theorem]{Conjecture}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{qn}[theorem]{Question}
+
+\plaintheorems
+%\newtheorem{defn}[unnumber]{Definition}
+%\newtheorem{defns}[unnumber]{Definitions}
+\newtheorem{notn}[unnumber]{Notation}
+\newtheorem{aside}[unnumber]{Comment}
+
+% Proof, Remark, Definition
+\def\endmark{\hskip 2em$\square$\par} 
+\def\proof{\trivlist \item[\hskip \labelsep{\bf Proof\ }]}
+\def\endproof{\null\hfill\endmark\endtrivlist}
+\def\rem{\trivlist \item[\hskip \labelsep{\bf Remark\ }]}
+\def\endrem{\null\hfill\endtrivlist}
+\def\defn{\trivlist \item[\hskip \labelsep{\bf Definition\ }]}
+\def\enddefn{\null\hfill\endtrivlist}
+ 
+% defined words and indexing
+\newcommand{\defword}[1]{\index{#1}{\it #1}}
+
+% commands to define new mathematical operators, relations, binary ops, etc.
+\newcommand{\newmathop}[2]{\def#1{\mathop{#2}\nolimits}}
+\newcommand{\newmathopwithlimits}[2]{\def#1{\mathop{#2}}}
+\newcommand{\newmathbin}[2]{\def#1{\mathbin{#2}}}
+\newcommand{\newmathrel}[2]{\def#1{\mathrel{#2}}}
+
+% and some maths macros
+\newcommand{\setof}[1]{\left\{#1\right\}}
+\newcommand{\setofall}[2]{\setof{#1:#2}}
+\newcommand{\card}[1]{\left|#1\right|}
+
+% Commands for use in bibliographies
+% ==================================
+
+% authors
+\newcommand{\wright}[1]{{\rm #1}}            % used in \writer and \pseud
+\newcommand{\writer}[1]{\wright{#1},}   
+\newcommand{\also}{\&\ }                     % used in author list
+\newcommand{\pseud}[2]
+  {\wright{#1} \rm (pseudonym for \wright{#2}),}
+
+% titles
+\newcommand{\paper}[1]{{\rm #1},}
+\newcommand{\ppaper}[1]{{\rm ``#1''}}        % used in \discuss
+\newcommand{\discuss}[2]
+  {{\rm Contribution to the discussion of \ppaper{#1} by #2},}          
+                                             % #1 is paper, #2 is author
+
+% journal, book, etc
+\newcommand{\jnl}[1]{{\it #1\/}}             % for journal title
+\newcommand{\book}[1]{{\it #1\/},}           % for book titles 
+\newcommand{\proc}[1]{in {\it #1\/}}         % for title of proceedings or 
+                                             % other work containing the paper -
+                                             % needs comma if no editors
+\newcommand{\edit}[1]{{\rm (ed.\ #1)},}      % includes e.g. "edited"
+\newcommand{\edits}[1]{{\rm (eds.\ #1)},}    % includes e.g. "edited"
+\newcommand{\series}[1]{{\it #1\/},}         % for series, e.g. 
+                                             % Springer Lecture Notes
+
+% publishing details
+\newcommand{\publish}[2]{{\rm #1, #2}}       % #1 is publisher, #2 is place
+\newcommand{\tome}[1]{{\rm #1},}             % for volume, part or edition 
+                                             % of book, goes after \publish
+
+% volume of journal
+\newcommand{\vol}[1]{{\bf #1}}               % volume number
+
+% year
+\newcommand{\jyear}[1]{{\rm (#1)},}          % for year of journal
+\newcommand{\byear}[1]{{\rm (#1)}.}          % for year of book
+\newcommand{\pyear}[1]{{\rm (#1)},}          % for year of proceedings
+                                             % the above two go straight after
+                                             % \tome - if present,
+                                             % \publish - otherwise
+\newcommand{\uyear}[1]{{\rm #1}.}
+
+% pages
+\newcommand{\pages}[1]{{\rm ~#1}.}           % include -- or and in #1
+\newcommand{\ppages}[1]{{\rm pp.~#1}.}       % for use with \proc ; as above
+
+% unpublished items
+\newcommand{\notyet}{{\rm\!, in press}.}
+\newcommand{\unpublish}[2]{{\rm #1, #2},}    % #1 is preprint, thesis etc.
+                                             % #2 is place
+
+% revert to \fancytheorems from \plaintheorems before continuing
+\fancytheorems

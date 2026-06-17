@@ -1,0 +1,161 @@
+
+\section{Introduction}
+\label{sec:intro}
+
+An innocent little combinatorial counting problem
+asks for the number of triangulations of a
+finite grid of size $m\times n$.  That is, for $m,n\ge1$
+we define $P_{m,n}:=\{0,1,\ldots,m\}\times\{0,1,\ldots,n\}$, ``the
+grid''. Equivalently, the point configuration $P_{m,n}$ 
+consists of all points of the integer lattice $\Z^2$
+in the lattice rectangle $\conv(P_{m,n})=[0,m]\times[0,n]$
+of area~$mn$.
+Every triangulation of this rectangle point set that uses all the
+points in $P_{m,n}$ has $(m+1)(n+1)=|P_{m,n}|$ vertices, 
+$2mn$ facets/triangles,
+and $3mn+m+n$ edges, $2(m+n)$ of them on the boundary, 
+the other $3mn-m-n$ ones in the interior.
+All the triangles are minimal lattice triangles of area $\frac12$
+(that is, of determinant~$1$), which are referred to as
+\emph{unimodular} triangles. The grid triangulations that
+use all the points are thus called \emph{unimodular triangulations}.
+The number of unimodular triangulations of the grid $P_{m,n}$
+ will be denoted by $f(m,n)$.
+ 
+ As an example, our first figure shows one unimodular triangulation of
+ the $5\times 6$ grid:
+\begin{center}
+\input{a_triangulation3.pstex_t}
+\end{center}
+To get started, one notes that of course $f(m,n)=f(n,m)$,
+one discovers with pleasure that $f(1,n)=\binom{2n}n$, and
+one works out by hand with a bit of pain that $f(2,2)=64$ and $f(2,3)=852$.
+Furthermore, one observes that the special triangulations that
+decompose into $m$ vertical strips of width~$1$ yield the
+lower bound
+\begin{equation}
+  \label{eq:easylow}
+  f(m,n)\ \ge\ f(1,n)^m\ =\ \binom{2n}n^m\;
+\end{equation}
+so for larger $m$ and $n$ the numbers $f(m,n)$ get huge \emph{very soon};
+for example, the bound yields $f(5,6) > 6 \cdot 10^{14}$.
+
+It is equally interesting to study/enumerate more
+general types of triangulations, such as
+triangulations of finite point sets that do not necessarily use 
+all the points, triangulations of general convex or non-convex
+lattice polygons, triangulations of general position
+point sets, triangulations of higher-dimensional point sets, etc.
+None of these will appear here, but we refer interested readers to
+Lee \cite{Lee} and De Loera, Rambau \& Santos \cite{DLRS}.
+
+Lattice triangulations are basic combinatorial objects,
+and they are fundamental discrete geometric structures;
+so it is no surprise that they appear in various computational geometry
+contexts. However, lattice triangulations have also been
+studied intensively from different algebraic geometry angles. So, 
+triangulations of a convex lattice polygon
+\begin{compactitem}
+\item[$\bullet$] provide
+the data for Viro's \cite{Viro} famous construction method
+of plane algebraic curves with prescribed combinatorics and topology,
+related to Hilbert's sixteenth problem;
+\item[$\bullet$]
+appear in Gel'fand--Kapranov--Zelevinsky's \cite{GKZ} theory of
+discriminants, where ``regular'' triangulations are in bijection with 
+the vertices of the secondary polytope of the point configuration, and
+\item[$\bullet$]
+model torus-equivariant 
+crepant resolution of singularities for toric three-folds,
+where ``regular'' triangulations correspond to projective desingularizations;
+see e.\,g., Kempf et~al.\ \cite[Chap.~3]{KKMS} and Dais \cite{Dais-3dToric}.
+\end{compactitem}
+The last two points pose the problem of counting or estimating the
+number $\freg(m,n)$ of \emph{regular} triangulations of~$P_{m,n}$,
+that is, of triangulations of $\conv(P_{m,n})$ whose triangles are the
+domains of linearity for a piecewise linear convex function
+(\emph{lifting function}); see also, for example, Sturmfels
+\cite[Chap.~8]{Sturmfels-GroePoly}, Ziegler \cite[Lect.~5]{Zpoly}.
+Motivated by the toric variety considerations, one would like to know
+whether/that for large $m$ and~$n$ most triangulations are
+non-regular.  There is no proof, but a lot of evidence that this
+should be true (see, e.g., Table~\ref{tab:large}).
+
+In this context, we must admit that despite the effort that has been
+put into studying this question (see e.\,g.\ Hastings
+\cite[Chap.~2]{Hastings}), it has not become clear what non-regular
+triangulations really ``look like.'' The ``mother of all examples'' is
+the whirlpool triangulation of the $3\times 3$ grid:
+\begin{center}
+  \begin{overpic}[scale=2]{whirlpool.eps}
+    \put(37,29){$p_0$}
+    \put(54,38){$p_1$}
+    \put(54,68){$p_2$}
+    \put(37,60){$p_3$}
+    \put(-8,3){$q_0$}
+    \put(100,3){$q_1$}
+    \put(100,93){$q_2$}
+    \put(-8,93){$q_3$}
+  \end{overpic}
+\end{center}
+
+Indeed, this unimodular triangulation is irregular, since a lifting
+function~$h$ would have to satisfy
+$h(p_i)+h(q_{i-1})<h(p_{i-1})+h(q_i)$ for $i=0,\dots,3$ (all indices
+taken modulo~$4$), implying the contradiction $h(q_0)+\dots+
+h(q_3)<h(q_0)+\dots+ h(q_3)$.
+
+For $m=n=3$, except for three symmetric copies
+this is the only example of a non-regular triangulation: We
+have $f(3,3)-\freg(3,3)=4$.
+This may lead one to the conjecture that some kind of
+``generalized whirlpools'' are responsible for non-regularity.
+However, the pictures of ``non-regular triangulations''
+that we present below do not support this intuition.
+\medskip
+
+The plan for this paper is as follows:
+In Section~\ref{sec:values} we face the challenge to
+\emph{\bfseries count} explicitly, trying to cope with the
+``combinatorial explosion.''
+For this, we present a simple dynamic programming technique by which we
+get surprisingly far, and which on the specific problem of
+grid triangulations outruns the much more
+sophisticated general techniques such as 
+Avis \& Fukuda's \cite{AvisFukuda} reverse search, 
+Aichholzer's \cite{Aichholzer-path} path of a triangulation,
+or the oriented matroid technique of Rambau \cite{Rambau-TOPCOM}.
+
+In Section~\ref{sec:bounds} we \emph{\bfseries estimate} $f(m,n)$ for
+large $m$ and $n$, trying to narrow the bounds for the asymptotics.
+It is interesting to compare with the situation for $N=(m+1)(n+1)$
+points in the plane in general position, where the currently best
+available upper bound seems to be Santos \& Seidel's
+\cite{SantosSeidel} estimate that there are $o(59^N)$ triangulations.
+However, in our problem the $N$ points are not at all in general
+position --- and the upper bounds that we have to offer are much
+better: We report on a neat $O(2^{3N})$ upper bound by Anclin
+\cite{Anclin}, which substantially improves on a previous $O(2^{4N})$
+upper bound by Orevkov \cite{Orevkov}.  Based on explicit enumeration
+results from Section~\ref{sec:values}, we get a lower bound of
+$2^{2.055\,mn}$ when both $m$ and~$n$ get large; note
+that~(\ref{eq:easylow}) yields already a lower bound
+$2^{(1-\littleo(1))2mn}$.
+
+Finally, in Section~\ref{sec:trias} 
+we \emph{\bfseries sample} lattice triangulations for large parameters
+$m$ and~$n$,
+and thus try to understand what typical lattice triangulations,
+as well as typical regular lattice triangulations, ``look like.''
+While we have some pictures to offer, proofs seem harder to come by.
+Indeed, the pictures display some long-range order;
+while this may make lattice triangulations interesting as a
+statistical physics model, it generates serious obstacles for any proof that
+the obvious Markov chain is rapidly mixing, and thus to
+application of the (by now) standard theory \cite{Behrends-MarkovChains}.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "bcc_ct"
+%%% End:
