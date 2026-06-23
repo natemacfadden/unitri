@@ -24,3 +24,6 @@ na_query.c
 *.so
 build/
 *.egg-info/
+
+# upstream reference material (Orevkov's paper source), kept locally only
+arXiv-math0211268v2/
