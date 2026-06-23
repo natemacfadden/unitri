@@ -1,0 +1,42 @@
+name: CI
+
+# Build the counter (C kernel + Cython binding) and run the CYTools-free
+# regression tests on every push and PR. The TOPCOM cross-checks
+# (tests/test_topcom_convex.py, tests/check_topcom.py) need CYTools and are not
+# run here; test_symmetry.py runs but skips its TOPCOM sub-checks when CYTools
+# is absent.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build + test (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install libgmp
+        run: sudo apt-get update && sudo apt-get install -y libgmp-dev
+      - name: Smoke-compile the default (mod-prime) backend
+        run: gcc -O2 -o /tmp/na-query-default unitri/na-query.c
+      - name: Build the Cython / GMP extension
+        run: pip install -e .
+      - name: Counting regression (exact GMP backend vs known counts)
+        run: python tests/run_tests.py
+      - name: Reflection- and unimodular-invariance tests
+        run: |
+          python tests/test_symmetry.py
+          python tests/test_unimodular.py

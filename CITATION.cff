@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: unitri
+abstract: "Counts the unimodular triangulations of a lattice polygon (a transfer-matrix counter; based on the original program by Stepan Orevkov, reworked and generalized by Nate MacFadden)."
+authors:
+  - family-names: MacFadden
+    given-names: Nate
+    orcid: https://orcid.org/0000-0002-8481-3724
+  - family-names: Orevkov
+    given-names: Stepan Yu.
+  - family-names: Stepniczka
+    given-names: Michael
+repository-code: https://github.com/natemacfadden/unitri
+license: GPL-3.0-or-later
+type: software
+references:
+  - type: article
+    title: "Further Bounding the Kreuzer-Skarke Landscape"
+    authors:
+      - family-names: MacFadden
+        given-names: Nate
+        orcid: https://orcid.org/0000-0002-8481-3724
+      - family-names: Orevkov
+        given-names: Stepan Yu.
+      - family-names: Stepniczka
+        given-names: Michael
+    doi: 10.48550/arXiv.2602.16909
+    url: https://arxiv.org/abs/2602.16909
