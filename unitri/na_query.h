@@ -517,18 +517,9 @@ static int lower_profile_is_zero(void){
 // kept only the height_0 >= height_m half via the x<->m-x reflection, which is
 // wrong for an asymmetric floor.
 //
-// scope / known limitation: this counts triangulations of the region *under the
-// profile polylines*.  That equals the number of triangulations of a point
-// set's convex hull only when the profiles trace the hull -- i.e. the upper
-// profile is concave and the lower convex.  If a profile dips inside the hull
-// (a hull edge advancing more than one column), the recurrence cannot form the
-// "long-diagonal" triangles that bulge above the dip, so it undercounts that
-// point set.  This is verified against TOPCOM: na_query agrees exactly on
-// concave-upper / convex-lower profiles (see tests/check_topcom.py and
-// tests/test_topcom_convex.py) and undercounts otherwise.  The Python helper
-// unitri.points_to_profiles always builds such a profile: it reads the hull
-// boundary and marks between-row columns absent (the n+1 "." sentinel), so the
-// profiles trace the true hull and callers never get a silent undercount.
+// na_query counts triangulations of the region under the given profile. To
+// count a point set's hull instead, the profile must trace the hull; that is
+// what unitri.points_to_profiles builds (cross-checked against TOPCOM).
 #ifdef GMP
 static void recurrence_value_with_lower_base(mpz_t dst,
                                              const mpz_t recurrence_sum){

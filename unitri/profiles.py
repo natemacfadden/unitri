@@ -16,19 +16,14 @@
 # =============================================================================
 """Convert a set of 2-D lattice points into na_query (m, n, upper, lower).
 
-na_query counts triangulations of the region *under the column profiles*.  For
-that to equal the number of triangulations of a point set's convex hull, the
-profiles must trace the hull boundary.  We do this exactly: in a chosen
-orientation we read the hull's upper/lower boundary at each integer column, and
-where the boundary crosses *between* lattice rows (a hull edge spanning more than
-one column) we mark that column ABSENT with na_query's n+1 sentinel ("."), so the
-profiles describe the true hull rather than a per-column-max polyline that dips
-inside it.
+To count a point set's triangulations, the profiles must trace its convex hull.
+In a chosen orientation we read the hull boundary at each integer column; where
+the boundary height is non-integer (the hull edge skips a row) we mark that
+column with the n+1 sentinel ("."), an absent vertex.
 
-Triangulation counts are unimodular-invariant, so we pick a minimal-width
-orientation (width >= 3, na_query's lower bound) to keep na_query's
-~ (n+2)^(m-1) cost down.  The result is cross-checked against TOPCOM.  If every
-orientation is too thin (width < 3) we raise rather than guess.
+Counts are unimodular-invariant, so we pick a minimal-width orientation (width
+>= 3, na_query's lower bound) to keep the ~ (n+2)^(m-1) cost down, and cross-check
+against TOPCOM. If every orientation has width < 3 we raise.
 """
 from math import gcd
 
@@ -116,11 +111,9 @@ def _orientations(pts):
 
 
 def _build_profile(pts, a, b):
-    """(m, n, upper, lower) reading the convex-hull boundary in the
-    orientation u = (a, b).  A column the boundary crosses at a non-integer
-    height (passing *between* lattice rows) is marked ABSENT with the n+1
-    sentinel -- na_query's "." vertex -- so the profiles describe the true hull,
-    not a dipped per-column-max polyline."""
+    """(m, n, upper, lower) reading the convex-hull boundary in orientation
+    u = (a, b). A column whose boundary height is non-integer gets the n+1
+    sentinel ("."), an absent vertex."""
     _, x0, y0 = _ext_gcd(a, b)                  # a*x0 + b*y0 = 1
     c, d = -y0, x0
     tpts = [(a * x + b * y, c * x + d * y) for x, y in pts]
@@ -165,11 +158,9 @@ def points_to_profiles(points):
 def count_triangulations(points):
     """Count the fine triangulations of a 2-D lattice point set -> Python int.
 
-    Uses a hull-tracing orientation, smallest lattice width first (na_query needs
-    m >= 3 and costs ~ (n+2)^(m-1)).  The count is orientation-invariant and the
-    hull+absent profile is exact, so the smallest-width orientation suffices; we
-    fall through to the next only if na_query refuses one (a rare profile it can't
-    represent), since a different orientation may avoid it.  Requires the built
+    Uses a minimal-width hull-tracing orientation (na_query needs m >= 3 and
+    costs ~ (n+2)^(m-1)); the count is orientation-invariant. Falls through to
+    the next orientation only if na_query rejects one. Requires the built
     extension.
     """
     from .na_query import na_query
