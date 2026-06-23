@@ -1,5 +1,7 @@
 # Counting unimodular triangulations of a lattice polygon
 
+See https://arxiv.org/abs/2602.16909.
+
 Exactly counts the unimodular (fine) triangulations of a lattice polygon -- given by an `m x n` bounding box plus upper/lower boundary profiles, so general regions and not just rectangles.
 
 Based on the original program by **Stepan Orevkov**
