@@ -95,10 +95,14 @@ int na_query_run(int argc, char **argv);
 // status codes returned by na_query_count (also documented in its Returns)
 enum {
   NA_OK          =  0,
-  NA_ERR_BAD_M   = -1,   // m < 3
+  NA_ERR_BAD_M   = -1,   // m not in [3, NA_MAX_M]
   NA_ERR_PROFILE = -2,   // invalid query (e.g. upper profile below the floor)
   NA_ERR_BUSY    = -3,   // a call is already in progress (not reentrant)
 };
+
+// largest supported width: the file-scope work arrays are sized [100] and
+// accessed through +1-shifted pointers, so the maximum valid index is m = 98
+#define NA_MAX_M 98
 
 /*
 Count fine (primitive) triangulations of the region between an upper profile and
@@ -110,7 +114,7 @@ or recursive call returns NA_ERR_BUSY (parallelize with separate processes).
 Parameters
 ----------
 m : int
-    Bounding-box width; must be >= 3.
+    Bounding-box width; must be in [3, NA_MAX_M] (= [3, 98]).
 n : int
     Bounding-box height; profile heights range over [0, n].
 upper : const int* restrict
@@ -128,7 +132,7 @@ Returns
 int
     Status code:
         NA_OK          ( 0) : success
-        NA_ERR_BAD_M   (-1) : m < 3
+        NA_ERR_BAD_M   (-1) : m not in [3, NA_MAX_M]
         NA_ERR_PROFILE (-2) : invalid query (e.g. upper profile below the floor)
         NA_ERR_BUSY    (-3) : a call is already in progress (not reentrant)
 */
@@ -1784,7 +1788,7 @@ int na_query_count(int m_arg, int n_arg,
                    const int * restrict upper, const int * restrict lower,
                    VAL * restrict out_count){
   if (atomic_exchange(&na_query_busy, 1)) return NA_ERR_BUSY;
-  if (m_arg < 3) { atomic_store(&na_query_busy, 0); return NA_ERR_BAD_M; }
+  if (m_arg < 3 || m_arg > NA_MAX_M) { atomic_store(&na_query_busy, 0); return NA_ERR_BAD_M; }
   m = m_arg;  n = n_arg;  n1 = n + 1;  n2 = n + 2;
   quiet = 1;   // a library call is silent (no stderr progress)
 #ifndef GMP
@@ -1819,9 +1823,10 @@ int na_query_run( int argc, char *argv[] ){
   }
   m = atoi(argv[1]);
   n = atoi(argv[2]);
-  if (m < 3) {
+  if (m < 3 || m > NA_MAX_M) {
     fprintf(stderr,
-            "m must be >= 3; widths m < 3 need special-case code (got m=%d)\n", m);
+            "m must be in [3, %d] (widths m < 3 need special-case code; larger m "
+            "exceeds the fixed work arrays); got m=%d\n", NA_MAX_M, m);
     atomic_store(&na_query_busy, 0);
     return 1;
   }
