@@ -10,23 +10,36 @@ Stepniczka and Nate MacFadden.
 > **If there are any bugs/issues in this code, assume they are due to Nate
 > MacFadden's rework and *not* Stepan Orevkov's original code.**
 
-## Files
+## Organization
 
-The counter lives in the `unitri/` package (C single-header + thin CLI + Cython
-binding); validation suites are in `tests/`; the rest are standalone tools.
-
-| file | what it does |
-|------|--------------|
-| `unitri/na_query.h` | The reworked/generalized counter as an stb-style single header. Width `m` and height `n` are runtime arguments. Two compile-time back-ends: **modulo a prime** (default) or **arbitrary-precision** big integers (`-DGMP`, links libgmp). Both give exact counts -- the modular build via CRT over several primes. |
-| `unitri/na-query.c` | Thin CLI: pulls in `na_query.h`'s implementation and forwards `argc/argv`. Reads `<m> <n> [prime_index]` plus an optional upper (and lower/floor) profile on stdin, and reports that region's count. |
-| `unitri/na_query.pyx` | Cython binding exposing `na_query(m, n, upper, lower=None)` -> Python int. Calls the counter in-process (no subprocess, no stdout parsing), built against the big-integer back-end. |
-| `pyproject.toml`, `setup.py`, `MANIFEST.in` | Packaging: build the `unitri` package / its `unitri.na_query` extension. |
-| `unitri/crt_combine.py` | Combines per-prime residues from the default build into the exact count via the Chinese Remainder Theorem. |
-| `tests/test_*.py` | pytest suite: exact counts vs known values (literature / TOPCOM) and reflection-/unimodular-invariance checks. Run with `pytest tests/`. |
-| `tests/check_topcom.py` | Standalone cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
-| `tests/benchmark.py` | Timing benchmark vs TOPCOM (the **Performance** numbers below); run with `python tests/benchmark.py`. |
-| `profile.sh` | Reports wall time (min/mean over `ITERS` runs) and peak memory of a command. |
-| `LICENSE` | GPL-3.0-or-later. |
+```
+unitri/
+├── unitri/
+│   ├── na_query.h      # the counter: stb-style single header, mod-prime (default) or GMP (-DGMP)
+│   ├── na-query.c      # thin CLI wrapper around na_query.h
+│   ├── na_query.pyx    # Cython binding: in-process na_query(m, n, upper, lower)
+│   ├── profiles.py     # lattice point set -> (m, n, upper, lower); count_triangulations
+│   ├── crt_combine.py  # combine the default build's per-prime residues into the exact count
+│   ├── __main__.py     # CLI: python -m unitri (count a lattice point set)
+│   └── __init__.py
+├── tests/
+│   ├── test_counts.py        # exact counts vs literature / TOPCOM
+│   ├── test_symmetry.py      # hard x<->m-x reflection cases
+│   ├── test_unimodular.py    # unimodular invariance
+│   ├── test_topcom_convex.py # randomized TOPCOM cross-check
+│   ├── check_topcom.py       # standalone TOPCOM cross-check (small convex regions)
+│   ├── conftest.py           # shared fixtures (builds the GMP binary)
+│   ├── transforms.py         # GL(2,Z) invariance helpers
+│   └── _gmp.py               # locate libgmp (Homebrew on macOS)
+├── benchmarks/
+│   ├── benchmark.py          # na_query vs TOPCOM timing (the Performance table)
+│   └── profile.sh            # wall-time + peak-memory profiler for any command
+├── pyproject.toml
+├── setup.py
+├── MANIFEST.in
+├── CITATION.cff
+└── LICENSE
+```
 
 ## Build
 
@@ -118,7 +131,7 @@ gcc 13.3 (`na_query` times are the min of 5 runs):
 | triangle, height 84 | ~7.6e65 | 2.1 s | infeasible |
 
 Counts agree exactly with TOPCOM wherever TOPCOM can finish. Reproduce with
-`python tests/benchmark.py`.
+`python benchmarks/benchmark.py`.
 
 ## Python (Cython binding)
 
