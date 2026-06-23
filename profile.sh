@@ -13,7 +13,7 @@ tmp=$(mktemp 2>/dev/null || mktemp -t proftmp)
 trap 'rm -f "$in" "$tmp"' EXIT
 cat > "$in"
 
-# one run for peak memory.  the command's stdout AND stderr pass through (so you
+# one run for peak memory.  the command's stdout and stderr pass through (so you
 # see its output, including any error), while time's own report is captured to
 # $tmp: fd 3 carries the command's stderr to the terminal; time writes to $tmp.
 exec 3>&2

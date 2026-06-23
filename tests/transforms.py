@@ -39,7 +39,7 @@ UNIMODULAR = [
     ((-1, -1, 0, -1), (2, 2)),    # det +1
 ]
 
-# The dihedral symmetries of the square (D4): det +-1 maps that PRESERVE the
+# The dihedral symmetries of the square (D4): det +-1 maps that preserve the
 # axis-aligned bounding-box dimensions, so the perpendicular extent n stays
 # bounded.  Use these for random/large point sets where a general shear could
 # blow up n (and hence na_query's ~ (n+2)^(m-1) cost); the full UNIMODULAR

@@ -517,12 +517,12 @@ static int lower_profile_is_zero(void){
 // kept only the height_0 >= height_m half via the x<->m-x reflection, which is
 // wrong for an asymmetric floor.
 //
-// SCOPE / KNOWN LIMITATION: this counts triangulations of the region *under the
+// scope / known limitation: this counts triangulations of the region *under the
 // profile polylines*.  That equals the number of triangulations of a point
-// set's convex hull ONLY when the profiles trace the hull -- i.e. the upper
+// set's convex hull only when the profiles trace the hull -- i.e. the upper
 // profile is concave and the lower convex.  If a profile dips inside the hull
 // (a hull edge advancing more than one column), the recurrence cannot form the
-// "long-diagonal" triangles that bulge above the dip, so it UNDERCOUNTS that
+// "long-diagonal" triangles that bulge above the dip, so it undercounts that
 // point set.  This is verified against TOPCOM: na_query agrees exactly on
 // concave-upper / convex-lower profiles (see tests/check_topcom.py and
 // tests/test_topcom_convex.py) and undercounts otherwise.  The Python helper
@@ -765,7 +765,7 @@ int parse_prime_index(int argc, char *argv[]){
 // ================
 // main calculation
 // ================
-// The counter keeps its working state in file-scope globals, so it is NOT
+// The counter keeps its working state in file-scope globals, so it is not
 // reentrant.  Both public entry points (na_query_run, na_query_count) take the
 // atomic flag below, which refuses a second concurrent or recursive entry
 // (returning a busy status) rather than letting two calls silently corrupt the
@@ -1310,7 +1310,7 @@ printf("] = %ld\n",recurrence_sum);
 
      }
 
-     // print the flat-square f(m,k) table only when NOT answering a query
+     // print the flat-square f(m,k) table only when not answering a query
      if (!query_enabled && twice_area%(2*m) == 0) {
       shape_index = 0;
       for (int coord=1; coord<=m-3; coord++) shape_index+=n2pow[m-3-coord];
@@ -1769,7 +1769,7 @@ int na_query_run( int argc, char *argv[] ){
     fprintf(stderr, "na_query: concurrent/reentrant call detected; this build "
                     "is single-call-at-a-time. Parallelize with separate "
                     "processes.\n");
-    return 2;          // busy: do NOT clear the flag -- the in-progress call owns it
+    return 2;          // busy: do not clear the flag -- the in-progress call owns it
   }
 
   // runtime configuration:  <m> <n> [prime_index]   (profile on stdin)
