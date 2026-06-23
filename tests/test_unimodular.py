@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # =============================================================================
 #    Copyright (C) 2026  Nate MacFadden for the Liam McAllister Group
 #
@@ -28,7 +27,7 @@ the x<->m-x reflection).  Before the fix na_query reported "not_found" for this
 orientation; count_triangulations now returns 134 in every orientation, matching
 TOPCOM.
 """
-import sys
+import pytest
 
 from transforms import invariant_count
 
@@ -47,18 +46,7 @@ CASES = [
 ]
 
 
-def main():
-    fails = 0
-    for name, pts, expected in CASES:
-        try:
-            got = invariant_count(pts, expected)
-        except AssertionError as e:
-            fails += 1
-            print(f"[FAIL] {name}\n       {e}")
-        else:
-            print(f"[PASS] {name}  (invariant count = {got})")
-    sys.exit(1 if fails else 0)
-
-
-if __name__ == "__main__":
-    main()
+@pytest.mark.parametrize("name,pts,expected", CASES, ids=[c[0] for c in CASES])
+def test_unimodular_invariance(name, pts, expected):
+    # invariant_count asserts every GL(2, Z) image agrees and equals expected
+    invariant_count(pts, expected)

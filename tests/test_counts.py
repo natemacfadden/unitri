@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # =============================================================================
 #    Copyright (C) 2026  Nate MacFadden for the Liam McAllister Group
 #
@@ -15,14 +14,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
-"""
-Test suite for na-query.c (big-integer GMP back-end) against known counts.
+"""na-query.c (big-integer GMP backend) against known exact counts.
 
 Each case names a region (a profile of upper heights U over a floor L within an
-m x n bounding box) and an expected exact count.  The script builds na-query.c
-with -DGMP at the right (m, n), runs the query, and compares.  It also requeries
-the x<->m-x reflected profile (a unimodular map) and checks the count is
-unchanged.
+m x n bounding box) and an expected exact count.  The query is run at the right
+(m, n) and compared; the x<->m-x reflected profile (a unimodular map) is also
+requeried and the count must be unchanged.
 
 Sources for the expected values:
   1,3: https://arxiv.org/pdf/math/0211268
@@ -33,13 +30,10 @@ Sources for the expected values:
 Memory for this code's index skeleton grows like (n+2)^(m-1); cases needing
 more than MEM_CAP are skipped (they require a big-memory machine).
 """
-
-import os
 import subprocess
 
-from _gmp import gmp_cflags
-NA_QUERY_C = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "..", "unitri", "na-query.c")
+import pytest
+
 MEM_CAP = 8e9   # bytes; skip cases whose pointer skeleton exceeds this
 
 # name, m, n, upper U, floor L (None = flat 0), expected count
@@ -68,15 +62,7 @@ def skeleton_bytes(m, n):
     return (m + 1) * (n2 ** (m - 3)) * (n2 + n2 * n2) * 8
 
 
-def build():
-    # m, n are runtime arguments now, so one binary serves every case
-    out = "/tmp/na_test"
-    subprocess.check_call(
-        ["gcc", "-O2", *gmp_cflags(), "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
-    return out
-
-
-def run_query(binary, m, n, U, L):
+def _run_query(binary, m, n, U, L):
     inp = " ".join(map(str, U)) + "\n"
     if L is not None:
         inp += " ".join(map(str, L)) + "\n"
@@ -88,43 +74,27 @@ def run_query(binary, m, n, U, L):
     return None
 
 
-def verdict(expected, got):
-    if got is None:
-        return "ERROR (no query_value; run may have failed)"
-    if expected.startswith("~"):                 # approximate expectation
-        exp = float(expected[1:])
-        ratio = int(got) / exp
-        ok = 0.5 < ratio < 2.0
-        return f"{'OK ' if ok else 'OFF'} (got {got}, ~{ratio:.3g}x the expected {expected})"
-    return "OK" if got == expected else f"MISMATCH (got {got}, expected {expected})"
-
-
-def reflect(profile):
+def _reflect(profile):
     # x <-> m-x is a unimodular map; reversing the profile must not change the
     # count.  (This is exactly the symmetry the flat-floor recurrence exploits,
     # so it directly exercises the height_0 < height_m reflection handling.)
     return None if profile is None else profile[::-1]
 
 
-def main():
-    binary = build()
-    fails = 0
-    for name, m, n, U, L, expected in CASES:
-        mem = skeleton_bytes(m, n)
-        if mem > MEM_CAP:
-            print(f"[SKIP] {name}\n       needs ~{mem/1e9:.0f} GB (m={m}, n={n}); "
-                  f"run on a big-memory machine")
-            continue
-        got = run_query(binary, m, n, U, L)
-        v = verdict(expected, got)
-        # unimodular (reflection) invariance: the reversed profile must agree
-        rev = run_query(binary, m, n, reflect(U), reflect(L))
-        if got is not None and rev != got:
-            v = f"NON-INVARIANT (reflected profile gave {rev}, expected {got})"
-        fails += not v.startswith("OK")
-        print(f"[{'PASS' if v.startswith('OK') else 'FAIL'}] {name}\n       {v}")
-    raise SystemExit(1 if fails else 0)
+@pytest.mark.parametrize("name,m,n,U,L,expected", CASES, ids=[c[0] for c in CASES])
+def test_count(na_query_bin, name, m, n, U, L, expected):
+    mem = skeleton_bytes(m, n)
+    if mem > MEM_CAP:
+        pytest.skip(f"needs ~{mem/1e9:.0f} GB (m={m}, n={n}); big-memory machine")
 
+    got = _run_query(na_query_bin, m, n, U, L)
+    assert got is not None, "no query_value (the run may have failed)"
+    if expected.startswith("~"):                 # approximate expectation
+        ratio = int(got) / float(expected[1:])
+        assert 0.5 < ratio < 2.0, f"got {got}, ~{ratio:.3g}x expected {expected}"
+    else:
+        assert got == expected, f"got {got}, expected {expected}"
 
-if __name__ == "__main__":
-    main()
+    # unimodular (reflection) invariance: the reversed profile must agree
+    rev = _run_query(na_query_bin, m, n, _reflect(U), _reflect(L))
+    assert rev == got, f"reflected profile gave {rev}, expected {got}"

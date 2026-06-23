@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # =============================================================================
 #    Copyright (C) 2026  Nate MacFadden for the Liam McAllister Group
 #
@@ -22,30 +21,27 @@ rest as mirror images.  A query whose profile has height_0 < height_m therefore
 lands in the un-stored half; before the fix that returned "not_found".  Every
 case below is chosen to exercise that half hard:
 
-  * asymmetric endpoints with the SMALL height on the left (height_0 < height_m),
+  * asymmetric endpoints with the small height on the left (height_0 < height_m),
   * absent vertices ('.') placed asymmetrically (long hull edges skipping rows),
   * nontrivial upper AND lower profiles (the need_full_table path; reversing the
     query reverses the floor too, so reflection is checked there as well).
 
-For each case the script checks three things against na-query.c (GMP build):
+For each case three things are checked against na-query.c (GMP build):
   1. the query is found (not "not_found") and equals the expected count,
-  2. the reversed profile -- a unimodular reflection -- gives the SAME count,
+  2. the reversed profile -- a unimodular reflection -- gives the same count,
   3. where the region is small enough (< 17 lattice points), TOPCOM agrees.
 
 Counts marked TOPCOM-verified were cross-checked against CYTools; the larger
 ones are regression pins (TOPCOM cannot enumerate >= ~17 points in reasonable
 time) and are still checked for reflection invariance.
 
-    python3 tests/test_symmetry.py
+    pytest tests/test_symmetry.py
 """
-import os
 import subprocess
 
-from _gmp import gmp_cflags
+import pytest
 
 TOPCOM_MAX_POINTS = 17     # CYTools enumeration is infeasible at/above this
-NA_QUERY_C = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "..", "unitri", "na-query.c")
 
 # name, m, n, upper U, floor L (None = flat 0), expected count
 # (tokens: integers or '.' for an absent vertex)
@@ -70,13 +66,6 @@ CASES = [
     ("nontrivial U/L, asymmetric",   4, 6, "6 5 4 3 3", "0 1 2 3 3", 14303),
     ("nontrivial U/L, reversed",     4, 6, "3 3 4 5 6", "3 3 2 1 0", 14303),
 ]
-
-
-def build():
-    out = "/tmp/na_symmetry"
-    subprocess.check_call(
-        ["gcc", "-O2", *gmp_cflags(), "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
-    return out
 
 
 def query(binary, m, n, U, L):
@@ -136,32 +125,19 @@ def topcom_count(m, n, U, L):
     return ("ok", c)
 
 
-def main():
-    binary = build()
-    fails = 0
-    for name, m, n, U, L, expected in CASES:
-        Us, Ls = U.split(), (L.split() if L else None)
-        got = query(binary, m, n, Us, Ls)
-        rev = query(binary, m, n, Us[::-1], Ls[::-1] if Ls else None)
-        status, tc = topcom_count(m, n, Us, Ls)
+@pytest.mark.parametrize("name,m,n,U,L,expected", CASES, ids=[c[0] for c in CASES])
+def test_symmetry(na_query_bin, name, m, n, U, L, expected):
+    Us, Ls = U.split(), (L.split() if L else None)
 
-        problems = []
-        if got is None:
-            problems.append("not_found / invalid")
-        elif got != str(expected):
-            problems.append(f"count {got} != expected {expected}")
-        if rev != got:
-            problems.append(f"NOT reflection-invariant (reversed={rev})")
-        if status == "ok" and str(tc) != got:
-            problems.append(f"TOPCOM disagrees ({tc})")
+    got = query(na_query_bin, m, n, Us, Ls)
+    assert got is not None, "not_found / invalid profile"
+    assert got == str(expected), f"count {got} != expected {expected}"
 
-        tcs = f"topcom={tc}" if status == "ok" else f"topcom: {tc or status}"
-        ok = not problems
-        fails += not ok
-        print(f"[{'PASS' if ok else 'FAIL'}] {name:30s} dp={got} ({tcs})"
-              + ("" if ok else "\n       " + "; ".join(problems)))
-    raise SystemExit(1 if fails else 0)
+    # the reversed profile is a unimodular reflection -> same count
+    rev = query(na_query_bin, m, n, Us[::-1], Ls[::-1] if Ls else None)
+    assert rev == got, f"not reflection-invariant (reversed={rev})"
 
-
-if __name__ == "__main__":
-    main()
+    # where the region is small enough, TOPCOM must agree
+    status, tc = topcom_count(m, n, Us, Ls)
+    if status == "ok":
+        assert str(tc) == got, f"TOPCOM disagrees ({tc})"

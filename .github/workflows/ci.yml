@@ -33,10 +33,9 @@ jobs:
       - name: Smoke-compile the default (mod-prime) backend
         run: gcc -O2 -o /tmp/na-query-default unitri/na-query.c
       - name: Build the Cython / GMP extension
-        run: pip install -e .
-      - name: Counting regression (exact GMP backend vs known counts)
-        run: python tests/run_tests.py
-      - name: Reflection- and unimodular-invariance tests
-        run: |
-          python tests/test_symmetry.py
-          python tests/test_unimodular.py
+        run: pip install -e . pytest
+      - name: Run the test suite
+        # CYTools is absent here, so test_topcom_convex is skipped and
+        # test_symmetry skips its TOPCOM sub-checks; the counting,
+        # reflection- and unimodular-invariance regressions still run
+        run: pytest tests/ -v

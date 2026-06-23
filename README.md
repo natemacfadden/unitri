@@ -23,8 +23,8 @@ binding); validation suites are in `tests/`; the rest are standalone tools.
 | `unitri/na_query.pyx` | Cython binding exposing `na_query(m, n, upper, lower=None)` -> Python int. Calls the counter in-process (no subprocess, no stdout parsing), built against the big-integer back-end. |
 | `pyproject.toml`, `setup.py`, `MANIFEST.in` | Packaging: build the `unitri` package / its `unitri.na_query` extension. |
 | `crt_combine.py` | Combines per-prime residues from the default build into the exact count via the Chinese Remainder Theorem. |
-| `tests/check_topcom.py` | Independent cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
-| `tests/run_tests.py` | Test suite: checks several regions against known counts (literature / TOPCOM). |
+| `tests/test_*.py` | pytest suite: exact counts vs known values (literature / TOPCOM) and reflection-/unimodular-invariance checks. Run with `pytest tests/`. |
+| `tests/check_topcom.py` | Standalone cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
 | `profile.sh` | Reports wall time (min/mean over `ITERS` runs) and peak memory of a command. |
 | `baseline.txt` | Reference outputs used to check the rework. |
 | `LICENSE` | GPL-3.0-or-later (the rework; `orig.c` remains Stepan Orevkov's). |

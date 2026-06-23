@@ -23,10 +23,11 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 
-# cross-check suite (tests/check_topcom.py) only; the extension itself needs
-# nothing beyond a C toolchain + libgmp
+# the suite runs under pytest; the TOPCOM cross-checks
+# (tests/test_topcom_convex.py, tests/check_topcom.py) also need CYTools;
+# the extension itself needs nothing beyond a C toolchain + libgmp
 [project.optional-dependencies]
-test = ["cytools"]
+test = ["pytest", "cytools"]
 
 [tool.setuptools]
 packages = ["unitri"]

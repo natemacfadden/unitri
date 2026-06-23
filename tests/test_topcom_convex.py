@@ -27,12 +27,19 @@ Each decided set is also counted under the dihedral (D4) symmetries of the
 square: the count must be the same in every orientation (a count that depends on
 orientation is a bug), and equal to TOPCOM.
 
-    python3 tests/test_topcom_convex.py
+Requires CYTools; skipped if it is not installed.
+
+    pytest tests/test_topcom_convex.py
 """
 import random
-import sys
 
-from cytools import Polytope
+import pytest
+
+try:
+    from cytools import Polytope
+    HAS_CYTOOLS = True
+except ImportError:
+    HAS_CYTOOLS = False
 
 from transforms import COMPACT, invariant_count
 
@@ -53,9 +60,11 @@ def topcom_count(P, cap):
     return c
 
 
-def main():
+@pytest.mark.skipif(not HAS_CYTOOLS, reason="cytools not installed")
+def test_topcom_cross_check():
     rng = random.Random(SEED)
-    matched = mismatched = uncountable = noninvariant = 0
+    matched = uncountable = 0
+    problems = []
     for _ in range(TRIALS):
         coord = rng.choice([3, 4, 5])
         cloud = {(rng.randint(0, coord), rng.randint(0, coord))
@@ -79,8 +88,7 @@ def main():
             # independence) and equal TOPCOM
             dp = invariant_count(pts, transforms=COMPACT)
         except AssertionError as e:
-            noninvariant += 1
-            print(f"  NON-INVARIANT pts={pts}: {e}")
+            problems.append(f"NON-INVARIANT pts={pts}: {e}")
             continue
         except (ValueError, RuntimeError):
             uncountable += 1              # honest refusal -- fine
@@ -88,18 +96,11 @@ def main():
             if dp == tc:
                 matched += 1
             else:
-                mismatched += 1
-                print(f"  MISMATCH pts={pts} count_triangulations={dp} topcom={tc}")
-        if matched + mismatched + uncountable >= CHECK_LIMIT:
+                problems.append(f"MISMATCH pts={pts} count_triangulations={dp} topcom={tc}")
+        if matched + len(problems) + uncountable >= CHECK_LIMIT:
             break
 
-    print(f"matched TOPCOM            = {matched}")
-    print(f"raised (na_query can't)   = {uncountable}")
-    print(f"MISMATCHED (must be 0)    = {mismatched}")
-    print(f"NON-INVARIANT (must be 0) = {noninvariant}")
-    print("OK" if mismatched == 0 and noninvariant == 0 else "FAILED")
-    sys.exit(1 if (mismatched or noninvariant) else 0)
-
-
-if __name__ == "__main__":
-    main()
+    assert not problems, (
+        f"{len(problems)} bad case(s) (matched={matched}, "
+        f"raised={uncountable}):\n  " + "\n  ".join(problems))
+    assert matched > 0, "no cases were decided (cytools/TOPCOM may be misconfigured)"
