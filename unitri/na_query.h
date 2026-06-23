@@ -855,7 +855,13 @@ static int na_query_compute(void){
 #ifdef GMP
   memH_cells[0] = 1;
 #endif
+  // false positive: gcc -Wmaybe-uninitialized can't see through the three
+  // malloc'd pointer levels (the H[0] skeleton is allocated for twice_area
+  // 0..m at the top of this function), so it flags this write
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   H[0][0][0][0] = memH[0];                                  // [area][coord][m2][m1]
+#pragma GCC diagnostic pop
   VAL_SET_UI(H[0][0][0][0][0], lower_profile_is_zero() ? 1 : 0);  // [..][m]
 
   // =========
