@@ -10,37 +10,6 @@ Stepniczka and Nate MacFadden.
 > **If there are any bugs/issues in this code, assume they are due to Nate
 > MacFadden's rework and *not* Stepan Orevkov's original code.**
 
-## Organization
-
-```
-unitri/
-├── unitri/
-│   ├── na_query.h      # the counter: stb-style single header, mod-prime (default) or GMP (-DGMP)
-│   ├── na-query.c      # thin CLI wrapper around na_query.h
-│   ├── na_query.pyx    # Cython binding: in-process na_query(m, n, upper, lower)
-│   ├── profiles.py     # lattice point set -> (m, n, upper, lower); count_triangulations
-│   ├── crt_combine.py  # combine the default build's per-prime residues into the exact count
-│   ├── __main__.py     # CLI: python -m unitri (count a lattice point set)
-│   └── __init__.py
-├── tests/
-│   ├── test_counts.py        # exact counts vs literature / TOPCOM
-│   ├── test_symmetry.py      # hard x<->m-x reflection cases
-│   ├── test_unimodular.py    # unimodular invariance
-│   ├── test_topcom_convex.py # randomized TOPCOM cross-check
-│   ├── check_topcom.py       # standalone TOPCOM cross-check (small convex regions)
-│   ├── conftest.py           # shared fixtures (builds the GMP binary)
-│   ├── transforms.py         # GL(2,Z) invariance helpers
-│   └── _gmp.py               # locate libgmp (Homebrew on macOS)
-├── benchmarks/
-│   ├── benchmark.py          # na_query vs TOPCOM timing (the Performance table)
-│   └── profile.sh            # wall-time + peak-memory profiler for any command
-├── pyproject.toml
-├── setup.py
-├── MANIFEST.in
-├── CITATION.cff
-└── LICENSE
-```
-
 ## Build
 
 The counting code is the single-header `na_query.h` (stb-style); `na-query.c`
@@ -166,3 +135,33 @@ if no file; accepts a pasted numpy array, `[x, y]` lists, or `x y` per line).
 Run the tests with `pip install -e .[test]` (adds pytest, plus cytools for the
 TOPCOM cross-checks) then `pytest tests/`.
 
+## Organization
+
+```
+unitri/
+├── unitri/
+│   ├── na_query.h      # the counter: stb-style single header, mod-prime (default) or GMP (-DGMP)
+│   ├── na-query.c      # thin CLI wrapper around na_query.h
+│   ├── na_query.pyx    # Cython binding: in-process na_query(m, n, upper, lower)
+│   ├── profiles.py     # lattice point set -> (m, n, upper, lower); count_triangulations
+│   ├── crt_combine.py  # combine the default build's per-prime residues into the exact count
+│   ├── __main__.py     # CLI: python -m unitri (count a lattice point set)
+│   └── __init__.py
+├── tests/
+│   ├── test_counts.py        # exact counts vs literature / TOPCOM
+│   ├── test_symmetry.py      # hard x<->m-x reflection cases
+│   ├── test_unimodular.py    # unimodular invariance
+│   ├── test_topcom_convex.py # randomized TOPCOM cross-check
+│   ├── check_topcom.py       # standalone TOPCOM cross-check (small convex regions)
+│   ├── conftest.py           # shared fixtures (builds the GMP binary)
+│   ├── transforms.py         # GL(2,Z) invariance helpers
+│   └── _gmp.py               # locate libgmp (Homebrew on macOS)
+├── benchmarks/
+│   ├── benchmark.py          # na_query vs TOPCOM timing (the Performance table)
+│   └── profile.sh            # wall-time + peak-memory profiler for any command
+├── pyproject.toml
+├── setup.py
+├── MANIFEST.in
+├── CITATION.cff
+└── LICENSE
+```
