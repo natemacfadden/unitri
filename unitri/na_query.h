@@ -30,10 +30,10 @@
    Provenance and modifications
    ----------------------------
    The header above and the algorithm it describes are the original work of
-   Stepan Orevkov (orig.c), which is the base of all the other methods here.
+   Stepan Orevkov, which is the base of all the other methods here.
 
-   Michael Stepniczka and Nate MacFadden performed a minor cleanup relating
-   only to the original code in orig.c.  Subsequently, Nate MacFadden, together
+   Michael Stepniczka and Nate MacFadden performed a minor cleanup of that
+   original code.  Subsequently, Nate MacFadden, together
    with Claude Opus 4.8, performed a more systematic cleanup and generalization.
 
    This file is the query counter, with two arithmetic back-ends selected at
@@ -41,7 +41,7 @@
 
      default (no -DGMP) : evaluates the area-graded recurrence modulo a prime.
                           Combine several primes via the Chinese Remainder
-                          Theorem (crt_combine.py) to recover the exact count.
+                          Theorem (unitri/crt_combine.py) to recover the exact count.
 
      -DGMP              : arbitrary-precision big-integer arithmetic (GMP / mpz_t);
                           a single run yields the true integer, no CRT needed

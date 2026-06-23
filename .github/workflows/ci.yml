@@ -31,7 +31,7 @@ jobs:
       - name: Install libgmp
         run: sudo apt-get update && sudo apt-get install -y libgmp-dev
       - name: Smoke-compile the default (mod-prime) backend
-        run: gcc -O2 -o /tmp/na-query-default unitri/na-query.c
+        run: gcc -O2 -Wall -Wextra -o /tmp/na-query-default unitri/na-query.c
       - name: Build the Cython / GMP extension
         run: pip install -e . pytest
       - name: Run the test suite

@@ -17,18 +17,16 @@ binding); validation suites are in `tests/`; the rest are standalone tools.
 
 | file | what it does |
 |------|--------------|
-| `orig.c` | Orevkov's original counter (unmodified); computes **modulo a prime**. |
 | `unitri/na_query.h` | The reworked/generalized counter as an stb-style single header. Width `m` and height `n` are runtime arguments. Two compile-time back-ends: **modulo a prime** (default) or **arbitrary-precision** big integers (`-DGMP`, links libgmp). Both give exact counts -- the modular build via CRT over several primes. |
 | `unitri/na-query.c` | Thin CLI: pulls in `na_query.h`'s implementation and forwards `argc/argv`. Reads `<m> <n> [prime_index]` plus an optional upper (and lower/floor) profile on stdin, and reports that region's count. |
 | `unitri/na_query.pyx` | Cython binding exposing `na_query(m, n, upper, lower=None)` -> Python int. Calls the counter in-process (no subprocess, no stdout parsing), built against the big-integer back-end. |
 | `pyproject.toml`, `setup.py`, `MANIFEST.in` | Packaging: build the `unitri` package / its `unitri.na_query` extension. |
-| `crt_combine.py` | Combines per-prime residues from the default build into the exact count via the Chinese Remainder Theorem. |
+| `unitri/crt_combine.py` | Combines per-prime residues from the default build into the exact count via the Chinese Remainder Theorem. |
 | `tests/test_*.py` | pytest suite: exact counts vs known values (literature / TOPCOM) and reflection-/unimodular-invariance checks. Run with `pytest tests/`. |
 | `tests/check_topcom.py` | Standalone cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
 | `tests/benchmark.py` | Timing benchmark vs TOPCOM (the **Performance** numbers below); run with `python tests/benchmark.py`. |
 | `profile.sh` | Reports wall time (min/mean over `ITERS` runs) and peak memory of a command. |
-| `baseline.txt` | Reference outputs used to check the rework. |
-| `LICENSE` | GPL-3.0-or-later (the rework; `orig.c` remains Stepan Orevkov's). |
+| `LICENSE` | GPL-3.0-or-later. |
 
 ## Build
 
@@ -97,7 +95,7 @@ echo "0 . 3 . 0" | ./na-query 4 4
 
 The result prints as `query_value <count>` -- the whole integer with `-DGMP`, or a
 residue mod the chosen prime in the default build (combine several primes with
-`crt_combine.py` to recover the exact count).
+`unitri/crt_combine.py` to recover the exact count).
 
 ## Performance
 
@@ -144,4 +142,14 @@ unitri.na_query(4, 4, [4,4,4,4,4], [0,1,0,1,0])  # 14032211   (over a non-flat f
 `unitri.na_query(m, n, upper, lower=None)` returns the exact count as a Python
 int (arbitrary precision). `upper`/`lower` are the `m+1` boundary heights, as in
 the CLI; omit `lower` for a flat floor at 0.
+
+To count an arbitrary lattice **point set** (not just a profile), use
+`unitri.count_triangulations(points)`: it traces the convex hull in a
+minimal-width orientation, builds the profile, and calls `na_query`.
+`unitri.points_to_profiles(points)` returns that `(m, n, upper, lower)` without
+counting. There is also a CLI -- `python -m unitri [points_file]` (reads stdin
+if no file; accepts a pasted numpy array, `[x, y]` lists, or `x y` per line).
+
+Run the tests with `pip install -e .[test]` (adds pytest, plus cytools for the
+TOPCOM cross-checks) then `pytest tests/`.
 

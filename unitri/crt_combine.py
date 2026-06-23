@@ -19,7 +19,7 @@
 combine modular counts with the chinese remainder theorem
 
 reads one residue per line.  the k-th residue is taken modulo the k-th prime
-of the table below, which mirrors prime[] in na-query.c / orig.c -- so residues
+of the table below, which mirrors prime[] in na-query.c -- so residues
 must be listed in prime order starting from prime[0].  blank lines and #
 comments are ignored.
 
