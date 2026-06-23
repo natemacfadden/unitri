@@ -23,7 +23,7 @@ case below is chosen to exercise that half hard:
 
   * asymmetric endpoints with the small height on the left (height_0 < height_m),
   * absent vertices ('.') placed asymmetrically (long hull edges skipping rows),
-  * nontrivial upper AND lower profiles (the need_full_table path; reversing the
+  * nontrivial upper and lower profiles (the need_full_table path; reversing the
     query reverses the floor too, so reflection is checked there as well).
 
 For each case three things are checked against na-query.c (GMP build):
@@ -54,7 +54,7 @@ CASES = [
     ("absent vertex, ends 1<2 (m4)", 4, 2, "1 . 2 2 2",   None, 2042),
     ("two absent, ends 0<4",         4, 4, "0 . 3 . 4",   None, 15546),
     ("absent, rising 1<4",           4, 4, "1 . 2 3 4",   None, 17863),
-    # --- nontrivial U AND L, TOPCOM-verified (full-table path; the reversed
+    # --- nontrivial U and L, TOPCOM-verified (full-table path; the reversed
     #     query reverses the floor too, so this checks reflection there) ------
     ("nontrivial U/L, symmetric",    3, 3, "2 3 3 2", "1 0 0 1", 1736),
     ("nontrivial U/L, asymmetric",   3, 3, "3 3 3 2", "1 0 0 1", 4768),

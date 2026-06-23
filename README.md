@@ -25,6 +25,7 @@ binding); validation suites are in `tests/`; the rest are standalone tools.
 | `crt_combine.py` | Combines per-prime residues from the default build into the exact count via the Chinese Remainder Theorem. |
 | `tests/test_*.py` | pytest suite: exact counts vs known values (literature / TOPCOM) and reflection-/unimodular-invariance checks. Run with `pytest tests/`. |
 | `tests/check_topcom.py` | Standalone cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
+| `tests/benchmark.py` | Timing benchmark vs TOPCOM (the **Performance** numbers below); run with `python tests/benchmark.py`. |
 | `profile.sh` | Reports wall time (min/mean over `ITERS` runs) and peak memory of a command. |
 | `baseline.txt` | Reference outputs used to check the rework. |
 | `LICENSE` | GPL-3.0-or-later (the rework; `orig.c` remains Stepan Orevkov's). |
@@ -97,6 +98,29 @@ echo "0 . 3 . 0" | ./na-query 4 4
 The result prints as `query_value <count>` -- the whole integer with `-DGMP`, or a
 residue mod the chosen prime in the default build (combine several primes with
 `crt_combine.py` to recover the exact count).
+
+## Performance
+
+`na_query` counts triangulations with a transfer-matrix recurrence -- it never
+enumerates them -- so its cost depends only on the bounding box `(m, n)`, not on
+the (often astronomically large) number of triangulations. TOPCOM, by contrast,
+enumerates one triangulation at a time, so its cost scales with the count and
+cannot reach large regions at all.
+
+Exact (GMP) build vs TOPCOM (via CYTools) on an Intel i5-10600K, Ubuntu 24.04,
+gcc 13.3 (`na_query` times are the min of 5 runs):
+
+| region | triangulations | `na_query` | TOPCOM |
+|---|---|---|---|
+| 3x2 rectangle | 852 | 0.5 ms | 0.10 s |
+| polygon (upper/lower) | 10,653 | 0.9 ms | 1.6 s |
+| polygon (upper/lower) | 840,021 | 1.4 ms | 146 s |
+| 4x4 square | 736,983,568 | 1.1 ms | infeasible |
+| 4x10 square | ~5.8e23 | 22 ms | infeasible |
+| triangle, height 84 | ~7.6e65 | 2.1 s | infeasible |
+
+Counts agree exactly with TOPCOM wherever TOPCOM can finish. Reproduce with
+`python tests/benchmark.py`.
 
 ## Python (Cython binding)
 
