@@ -794,7 +794,7 @@ static int na_query_compute(void){
   // area-graded tables, sized now that m,n are known (freed at the end)
   long n_areas = 2*m*n + 1;
   H          = (VAL *****)malloc(n_areas * sizeof *H);
-  memH       = (VAL **)   malloc(n_areas * sizeof *memH);
+  memH       = (VAL **)   calloc(n_areas, sizeof *memH);   // NULL-init: cleanup frees non-NULL pages
   alloc_memH = (long *)   malloc(n_areas * sizeof *alloc_memH);
 #ifdef GMP
   memH_cells = (long *)   malloc(n_areas * sizeof *memH_cells);
@@ -898,9 +898,11 @@ static int na_query_compute(void){
       long old = twice_area-m-1;
       for (long i=0; i<memH_cells[old]; i++) mpz_clear(memH[old][i]);
       free(memH[old]);
+      memH[old] = NULL;
 #else
     if (twice_area>m+1) {
       free(memH[twice_area-m-1]);
+      memH[twice_area-m-1] = NULL;
 #endif
       alloc_total -= alloc_memH[twice_area-m-1];
     }
@@ -1718,6 +1720,28 @@ printf("] = %ld\n",recurrence_sum);
      // all sit at smaller area and are already done)
      if (query_enabled && twice_area == query_area) break;
    } /* end of loop by twice_area */
+
+   // free the per-area H pointer skeleton: only areas 0..m are distinct (later
+   // areas alias them via H[ta] = H[ta-m-1]), so free those m+1 skeletons once
+   for (long ta=0; ta<=m; ta++) {
+     for (long coord=0; coord<n2pow[m-3]; coord++) {
+       for (long m2=0; m2<n2; m2++) free(H[ta][coord][m2]);
+       free(H[ta][coord]);
+     }
+     free(H[ta]);
+   }
+   // free the value pages still live: aged-out pages were freed + NULLed in the
+   // loop, unreached areas stay NULL (calloc), and memH[0] is the static cell
+   for (long ta=1; ta<n_areas; ta++) {
+     if (!memH[ta]) continue;
+#ifdef GMP
+     for (long i=0; i<memH_cells[ta]; i++) mpz_clear(memH[ta][i]);
+#endif
+     free(memH[ta]);
+   }
+#ifdef GMP
+   mpz_clear(memH0);   // the base-case cell memH[0], init'd at the top
+#endif
 
    free(H);
    free(memH);
