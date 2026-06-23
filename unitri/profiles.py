@@ -95,28 +95,6 @@ def _column_bounds(hull, x):
     return lo, hi
 
 
-def minimal_width_direction(pts, min_width=0):
-    """Primitive direction (a, b) minimizing the lattice width
-    ``max<u,p> - min<u,p>`` subject to width >= min_width, returned as
-    ((a, b), width), or (None, None) if no direction reaches min_width.  Keeping
-    the width m small keeps na_query's cost ~ (n+2)^(m-1) down; min_width=3 picks
-    the cheapest orientation na_query can actually handle (it needs m >= 3)."""
-    xs = [x for x, _ in pts]
-    ys = [y for _, y in pts]
-    K = max(max(xs) - min(xs), max(ys) - min(ys), 1)
-    best_u, best_w = None, None
-    for a in range(0, K + 1):
-        for b in range(-K, K + 1):
-            if a == 0 and b <= 0:
-                continue
-            if gcd(abs(a), abs(b)) != 1:
-                continue
-            w = _width(pts, a, b)
-            if w >= min_width and (best_w is None or w < best_w):
-                best_w, best_u = w, (a, b)
-    return best_u, best_w
-
-
 def _orientations(pts):
     """Primitive orientations (a, b) with lattice width >= 3, smallest width
     first (smaller width => smaller m => cheaper na_query)."""
@@ -138,7 +116,7 @@ def _orientations(pts):
 
 
 def _build_profile(pts, a, b):
-    """(m, n, upper, lower, T, shift) reading the convex-hull boundary in the
+    """(m, n, upper, lower) reading the convex-hull boundary in the
     orientation u = (a, b).  A column the boundary crosses at a non-integer
     height (passing *between* lattice rows) is marked ABSENT with the n+1
     sentinel -- na_query's "." vertex -- so the profiles describe the true hull,
@@ -155,25 +133,22 @@ def _build_profile(pts, a, b):
     for X in range(m + 1):
         (ln, ld), (un, ud) = _column_bounds(hull, X)
         u = un // ud if un % ud == 0 else None
-        l = ln // ld if ln % ld == 0 else None
+        lo = ln // ld if ln % ld == 0 else None
         raw_U.append(u)
-        raw_L.append(l)
+        raw_L.append(lo)
         if u is not None:
             present_U.append(u)
     n = max(present_U)
     absent = n + 1
     upper = [absent if u is None else u for u in raw_U]
-    lower = [absent if l is None else l for l in raw_L]
-    return m, n, upper, lower, ((a, b), (c, d)), (sx, sy)
+    lower = [absent if lo is None else lo for lo in raw_L]
+    return m, n, upper, lower
 
 
-def points_to_profiles(points, transform=False):
+def points_to_profiles(points):
     """Convert 2-D lattice points to na_query's (m, n, upper, lower), reading
     the convex-hull boundary in a minimal-width orientation (absent columns get
     the n+1 sentinel).
-
-    With transform=True also returns the unimodular ``T`` and ``shift`` mapping
-    an original point ``p`` to its box coordinate ``(T @ p) - shift``.
     """
     pts = sorted({(int(x), int(y)) for x, y in points})
     if len(pts) < 3:
@@ -183,9 +158,7 @@ def points_to_profiles(points, transform=False):
         raise ValueError("point set is too thin: width < 3 in every orientation "
                          "(na_query needs m >= 3)")
     a, b = ors[0]
-    m, n, upper, lower, T, shift = _build_profile(pts, a, b)
-    if transform:
-        return m, n, upper, lower, T, shift
+    m, n, upper, lower = _build_profile(pts, a, b)
     return m, n, upper, lower
 
 
@@ -209,7 +182,7 @@ def count_triangulations(points):
                          "(na_query needs m >= 3)")
     last = None
     for a, b in ors[:24]:                       # bound the retries
-        m, n, upper, lower, _, _ = _build_profile(pts, a, b)
+        m, n, upper, lower = _build_profile(pts, a, b)
         try:
             return na_query(m, n, upper, lower)
         except RuntimeError as e:               # na_query rejected this orientation

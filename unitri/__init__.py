@@ -14,21 +14,21 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
-"""unitri -- counting primitive lattice triangulations of an m x n rectangle.
+"""unitri -- counting unimodular triangulations of a lattice polygon.
 
-Exposes the in-process counter from the Cython extension (na_query.pyx, which
-wraps the C single-header na_query.h).  See `na_query` for the entry point.
+The polygon is given by an m x n bounding box plus upper/lower boundary
+profiles. Exposes the in-process counter from the Cython extension
+(na_query.pyx, which wraps the C single-header na_query.h).  See `na_query`
+for the entry point.
 """
 from .na_query import na_query
 from .profiles import (
     count_triangulations,
     points_to_profiles,
-    minimal_width_direction,
 )
 
 __all__ = [
     "count_triangulations",
     "na_query",
     "points_to_profiles",
-    "minimal_width_direction",
 ]

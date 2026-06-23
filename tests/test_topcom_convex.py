@@ -34,7 +34,6 @@ import sys
 
 from cytools import Polytope
 
-import unitri
 from transforms import COMPACT, invariant_count
 
 SEED = 20260617

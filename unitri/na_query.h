@@ -839,7 +839,8 @@ static int na_query_compute(void){
   alloc_total = alloc_pointers;
 
   // subshape_code value 2 means that the vertex is absent in the subshape
-  height_options_0[2] = height_options_m1[2] = height_options_m2[2] = n+1;
+  // (the [m]/height_0 corner only ever has codes 0/1, so it needs no [2] slot)
+  height_options_m1[2] = height_options_m2[2] = n+1;
 
   // base case: the empty shape has one (trivial) triangulation
   VAL_INIT(memH0);
