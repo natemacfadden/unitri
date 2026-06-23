@@ -40,6 +40,8 @@ Usage:  python3 check_topcom.py     (needs cytools + a GMP toolchain)
 
 import os
 import subprocess
+
+from _gmp import gmp_cflags
 from cytools import Polytope
 
 MEM_CAP = 8e9   # bytes; skip configs whose pointer skeleton exceeds this
@@ -54,12 +56,9 @@ def skeleton_bytes(m, n):
 
 def build_dp():
     # m, n are runtime arguments now, so one binary serves every region
-    gmp = subprocess.check_output(["brew", "--prefix", "gmp"]).decode().strip()
     out = "/tmp/na_qg_check"
     subprocess.check_call(
-        ["gcc", "-O2",
-         f"-I{gmp}/include", f"-L{gmp}/lib",
-         "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
+        ["gcc", "-O2", *gmp_cflags(), "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
     return out
 
 

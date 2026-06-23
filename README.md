@@ -1,4 +1,6 @@
-# Counting primitive lattice triangulations of an m x n rectangle
+# Counting unimodular triangulations of a lattice polygon
+
+Exactly counts the unimodular (fine) triangulations of a lattice polygon -- given by an `m x n` bounding box plus upper/lower boundary profiles, so general regions and not just rectangles.
 
 Based on the original program by **Stepan Orevkov**
 (<http://picard.ups-tlse.fr/~orevkov>), reworked and generalized by Nate
@@ -24,8 +26,6 @@ binding); validation suites are in `tests/`; the rest are standalone tools.
 | `tests/check_topcom.py` | Independent cross-check of the floor logic against TOPCOM (via CYTools), on small convex regions. |
 | `tests/run_tests.py` | Test suite: checks several regions against known counts (literature / TOPCOM). |
 | `profile.sh` | Reports wall time (min/mean over `ITERS` runs) and peak memory of a command. |
-| `sample_triangulation.py` | Self-contained count / uniform-sample / enumerate of fine triangulations of a lattice polygon (general polygons; small only). |
-| `regularity.py` | Checks whether a triangulation is regular, via `regfans` (`pip install regfans`). |
 | `baseline.txt` | Reference outputs used to check the rework. |
 | `LICENSE` | GPL-3.0-or-later (the rework; `orig.c` remains Stepan Orevkov's). |
 
@@ -33,8 +33,8 @@ binding); validation suites are in `tests/`; the rest are standalone tools.
 
 The counting code is the single-header `na_query.h` (stb-style); `na-query.c`
 is a thin CLI that pulls in its implementation. Width `m` and height `n` are
-**runtime arguments**, so one binary handles every size -- no recompiling per
-rectangle. The default build computes **modulo a prime**:
+**runtime arguments**, so one binary handles every size at runtime -- no
+recompiling. The default build computes **modulo a prime**:
 
 ```sh
 gcc -O2 -o na-query unitri/na-query.c

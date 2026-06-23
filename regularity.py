@@ -102,10 +102,9 @@ def is_regular(pts: np.ndarray, simps: np.ndarray) -> bool:
 
 
 def is_regular_from_triangles(triangles) -> bool:
-    """Convenience wrapper for the local samplers' output format: `triangles`
-    is an iterable of 3-point sets/tuples (each point an (x, y) pair), as
-    returned by sample_triangulation.sample().  Builds the (pts, simps) index
-    form and calls is_regular."""
+    """Convenience wrapper: `triangles` is an iterable of 3-point sets/tuples
+    (each point an (x, y) pair). Builds the (pts, simps) index form and calls
+    is_regular."""
     index, pts, simps = {}, [], []
     for tri in triangles:
         idx = []

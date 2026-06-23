@@ -41,6 +41,8 @@ time) and are still checked for reflection invariance.
 import os
 import subprocess
 
+from _gmp import gmp_cflags
+
 TOPCOM_MAX_POINTS = 17     # CYTools enumeration is infeasible at/above this
 NA_QUERY_C = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           "..", "unitri", "na-query.c")
@@ -71,11 +73,9 @@ CASES = [
 
 
 def build():
-    gmp = subprocess.check_output(["brew", "--prefix", "gmp"]).decode().strip()
     out = "/tmp/na_symmetry"
     subprocess.check_call(
-        ["gcc", "-O2", f"-I{gmp}/include", f"-L{gmp}/lib",
-         "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
+        ["gcc", "-O2", *gmp_cflags(), "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
     return out
 
 

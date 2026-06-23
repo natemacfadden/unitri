@@ -8,11 +8,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "unitri"
 version = "0.1.0"
-description = "Counting primitive lattice triangulations of an m x n rectangle"
+description = "Counting unimodular triangulations of a lattice polygon"
 authors = [{ name = "Nate MacFadden for the Liam McAllister Group" }]
 readme = "README.md"
 license = "GPL-3.0-or-later"
-keywords = ["lattice", "triangulation", "primitive", "unimodular", "rectangle"]
+keywords = ["lattice", "triangulation", "unimodular", "primitive", "polygon"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Cython",

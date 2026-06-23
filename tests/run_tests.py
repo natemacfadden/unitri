@@ -37,7 +37,7 @@ more than MEM_CAP are skipped (they require a big-memory machine).
 import os
 import subprocess
 
-GMP = subprocess.check_output(["brew", "--prefix", "gmp"]).decode().strip()
+from _gmp import gmp_cflags
 NA_QUERY_C = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           "..", "unitri", "na-query.c")
 MEM_CAP = 8e9   # bytes; skip cases whose pointer skeleton exceeds this
@@ -72,9 +72,7 @@ def build():
     # m, n are runtime arguments now, so one binary serves every case
     out = "/tmp/na_test"
     subprocess.check_call(
-        ["gcc", "-O2",
-         f"-I{GMP}/include", f"-L{GMP}/lib",
-         "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
+        ["gcc", "-O2", *gmp_cflags(), "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
     return out
 
 
