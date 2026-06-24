@@ -1,4 +1,4 @@
-# Counting unimodular triangulations of a lattice polygon
+# unitri
 
 **Paper:** [Further Bounding the Kreuzer-Skarke Landscape](https://arxiv.org/abs/2602.16909) (arXiv:2602.16909)
 
@@ -81,29 +81,6 @@ The result prints as `query_value <count>` -- the whole integer with `-DGMP`, or
 residue mod the chosen prime in the default build (combine several primes with
 `unitri/crt_combine.py` to recover the exact count).
 
-## Performance
-
-`na_query` counts triangulations with a transfer-matrix recurrence -- it never
-enumerates them -- so its cost depends only on the bounding box `(m, n)`, not on
-the (often astronomically large) number of triangulations. TOPCOM, by contrast,
-enumerates one triangulation at a time, so its cost scales with the count and
-cannot reach large regions at all.
-
-Exact (GMP) build vs TOPCOM (via CYTools) on an Intel i5-10600K, Ubuntu 24.04,
-gcc 13.3 (`na_query` times are the min of 5 runs):
-
-| region | triangulations | `na_query` | TOPCOM |
-|---|---|---|---|
-| 3x2 rectangle | 852 | 0.5 ms | 0.10 s |
-| polygon (upper/lower) | 10,653 | 0.9 ms | 1.6 s |
-| polygon (upper/lower) | 840,021 | 1.4 ms | 146 s |
-| 4x4 square | 736,983,568 | 1.1 ms | infeasible |
-| 4x10 square | ~5.8e23 | 22 ms | infeasible |
-| triangle, height 84 | ~7.6e65 | 2.1 s | infeasible |
-
-Counts agree exactly with TOPCOM wherever TOPCOM can finish. Reproduce with
-`python benchmarks/benchmark.py`.
-
 ## Python (Cython binding)
 
 `unitri/na_query.pyx` wraps the in-process counting API so you can count from
@@ -136,6 +113,29 @@ if no file; accepts a pasted numpy array, `[x, y]` lists, or `x y` per line).
 
 Run the tests with `pip install -e .[test]` (adds pytest, plus cytools for the
 TOPCOM cross-checks) then `pytest tests/`.
+
+## Performance
+
+`na_query` counts triangulations with a transfer-matrix recurrence -- it never
+enumerates them -- so its cost depends only on the bounding box `(m, n)`, not on
+the (often astronomically large) number of triangulations. TOPCOM, by contrast,
+enumerates one triangulation at a time, so its cost scales with the count and
+cannot reach large regions at all.
+
+Exact (GMP) build vs TOPCOM (via CYTools) on an Intel i5-10600K, Ubuntu 24.04,
+gcc 13.3 (`na_query` times are the min of 5 runs):
+
+| region | triangulations | `na_query` | TOPCOM |
+|---|---|---|---|
+| 3x2 rectangle | 852 | 0.5 ms | 0.10 s |
+| polygon (upper/lower) | 10,653 | 0.9 ms | 1.6 s |
+| polygon (upper/lower) | 840,021 | 1.4 ms | 146 s |
+| 4x4 square | 736,983,568 | 1.1 ms | infeasible |
+| 4x10 square | ~5.8e23 | 22 ms | infeasible |
+| triangle, height 84 | ~7.6e65 | 2.1 s | infeasible |
+
+Counts agree exactly with TOPCOM wherever TOPCOM can finish. Reproduce with
+`python benchmarks/benchmark.py`.
 
 ## Organization
 
