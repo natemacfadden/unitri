@@ -4,8 +4,8 @@
 # triangulations directly -- no subprocess, no stdout parsing.  Built against
 # the big-integer (GMP) back-end, so the returned count is the exact integer.
 #
-# starting scaffold: the C API may still change.  If na_query_count's signature
-# in na_query.h changes, update the `cdef extern` block below to match.
+# If na_query_count's signature in na_query.h changes, update the `cdef extern`
+# block below to match.
 
 from libc.stdlib cimport malloc, free
 

@@ -249,6 +249,14 @@ long *alloc_memH;         // [2*m*n+1] byte size of each H area-layer value page
 // Each value is a VAL (a big-integer mpz_t, or an int residue mod a prime);
 // H[v] points into the value page memH[v], and old H pointer layers are reused
 // once their volume is no longer needed.
+//
+// Index order: H[twice_area][shape_index][height_m2][height_m1][height_m]
+// (cf. the [area][coord][m2][m1] note at H init). twice_area is the area grade
+// (2*m*n+1 layers); shape_index is the flattened index over the interior boundary
+// heights height[1..m-3] (built in shape_index_prefix); the last three levels are
+// the heights of the three rightmost columns m-2, m-1, m. A cell is the count of
+// fine triangulations of the shape with that area and profile, filled bottom-up
+// in area by the one-step inclusion-exclusion recurrence below.
 VAL *****H;       // [2*m*n+1] area layers; allocated once m,n are known
 VAL **memH;       // [2*m*n+1] value pages
 VAL memH0;

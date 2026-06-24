@@ -30,6 +30,9 @@ count, no CRT needed); this links libgmp:
 gcc -O2 -DGMP -o na-query unitri/na-query.c -lgmp
 ```
 
+The `-DGMP` build needs libgmp installed -- `apt install libgmp-dev` on
+Debian/Ubuntu, `brew install gmp` on macOS, or `conda install -c conda-forge gmp`.
+
 If GMP isn't on the default search path (e.g. Homebrew on macOS), point the
 compiler at it with `-I` (headers) and `-L` (library). Apple Silicon paths are
 shown; on Intel macOS use `/usr/local/...`:
