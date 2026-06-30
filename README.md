@@ -127,20 +127,25 @@ the (often astronomically large) number of triangulations. TOPCOM, by contrast,
 enumerates one triangulation at a time, so its cost scales with the count and
 cannot reach large regions at all.
 
-Exact (GMP) build vs TOPCOM (via CYTools) on an Intel i5-10600K, Ubuntu 24.04,
-gcc 13.3 (`na_query` times are the min of 5 runs):
+Exact (GMP) build vs TOPCOM (via CYTools) on an Intel Core Ultra 7 270K Plus,
+Ubuntu 26.04, gcc 15.2. Both columns are warmed up once, then reported as the
+per-call mean ± stdev: `na_query` in process through the compiled extension (not
+a subprocess), with auto-scaled repetitions over 7 batches; TOPCOM one run per
+batch, its repeats stopping once their cumulative time exceeds a 60 s budget.
+The `upper / lower` column gives the boundary heights `h_0..h_m` that define
+each region (`flat` = floor at 0).
 
-| region | triangulations | `na_query` | TOPCOM |
-|---|---|---|---|
-| 3x2 rectangle | 852 | 0.5 ms | 0.10 s |
-| polygon (upper/lower) | 10,653 | 0.9 ms | 1.6 s |
-| polygon (upper/lower) | 840,021 | 1.4 ms | 146 s |
-| 4x4 square | 736,983,568 | 1.1 ms | infeasible |
-| 4x10 square | ~5.8e23 | 22 ms | infeasible |
-| triangle, height 84 | ~7.6e65 | 2.1 s | infeasible |
+| region | upper / lower | triangulations | `na_query` | TOPCOM |
+|---|---|---|---|---|
+| 3x2 rectangle | 2,2,2,2 / 0,0,0,0 | 852 | 0.020 ± 0.000 ms | 0.04 ± 0.01 s |
+| polygon | 2,3,3,3,2 / 2,1,0,0,1 | 10,653 | 0.190 ± 0.001 ms | 0.56 ± 0.00 s |
+| polygon | 3,4,4,4,3 / 3,1,0,0,1 | 840,021 | 0.517 ± 0.001 ms | 55.0 ± 0.3 s |
+| 4x4 square | 4,4,4,4,4 / flat | 736,983,568 | 0.330 ± 0.004 ms | infeasible |
+| 4x10 square | 10,10,10,10,10 / flat | ~5.8e23 | 13.10 ± 0.04 ms | infeasible |
+| triangle, height 84 | 84,56,28,0 / flat | ~7.6e65 | 1.26 ± 0.003 s | infeasible |
 
 Counts agree exactly with TOPCOM wherever TOPCOM can finish. Reproduce with
-`python benchmarks/benchmark.py`.
+`pip install -e . && python benchmarks/benchmark.py`.
 
 ## Organization
 

@@ -19,14 +19,24 @@
 
 na_query counts triangulations without enumerating them, so its cost depends on
 the bounding box (m, n), not the number of triangulations; TOPCOM enumerates one
-at a time and cannot reach large regions. Needs a GMP toolchain; the TOPCOM
-column needs cytools (skipped, but na_query is still timed, if it is absent).
+at a time and cannot reach large regions.
 
+Both columns are timed the same way: warm up once (so one-time costs -- caches /
+first-touch allocation for na_query, the cytools import + numba JIT for TOPCOM --
+are excluded), then measure several batches and report the per-call mean +/-
+stdev.  na_query is timed *in process* through the compiled `unitri.na_query`
+extension (no subprocess spawn), with auto-scaled inner repetitions so the
+microsecond cases are not perf_counter-resolution bound.  TOPCOM is one call per
+batch; because it is slow, its repeats stop early once their cumulative time
+exceeds TOPCOM_BUDGET, so a multi-minute case does not balloon.
+
+    pip install -e .          # build the extension first
     python benchmarks/benchmark.py
+
+The TOPCOM column needs cytools (the na_query column is still produced if it is
+absent).
 """
-import os
-import sys
-import subprocess
+import statistics
 import time
 
 try:
@@ -35,42 +45,84 @@ try:
 except ImportError:
     HAS_CYTOOLS = False
 
-# the GMP-discovery helper lives at the repo root (shared with setup.py)
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from _gmp import gmp_cflags
+try:
+    from unitri.na_query import na_query
+except ImportError as e:                     # pragma: no cover - setup guidance
+    raise SystemExit(
+        "could not import unitri.na_query -- build the extension first with "
+        "`pip install -e .` (see the project README).\n"
+        f"(import error: {e})")
 
-NA_QUERY_C = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "..", "unitri", "na-query.c")
-TRIALS = 5   # na_query is fast; report the min over a few runs
+WARMUP = 1            # untimed calls before measuring (one-time cost exclusion)
+MIN_BATCH = 0.05      # grow inner reps until a timed batch lasts >= this (seconds)
+REPEAT = 7            # number of timed batches; mean +/- stdev is over these
+TOPCOM_BUDGET = 60.0  # seconds; cap repeated runs of the slow TOPCOM baseline
 
 # (name, m, n, upper U, floor L (None = flat 0), topcom-feasible)
 CASES = [
     ("3x2 rectangle",       3, 4,  [2, 2, 2, 2],          [0, 0, 0, 0],     True),
-    ("polygon (U/L)",       4, 3,  [2, 3, 3, 3, 2],       [2, 1, 0, 0, 1],  True),
-    ("polygon (U/L)",       4, 4,  [3, 4, 4, 4, 3],       [3, 1, 0, 0, 1],  True),
+    ("polygon",             4, 3,  [2, 3, 3, 3, 2],       [2, 1, 0, 0, 1],  True),
+    ("polygon",             4, 4,  [3, 4, 4, 4, 3],       [3, 1, 0, 0, 1],  True),
     ("4x4 square",          4, 4,  [4, 4, 4, 4, 4],       None,             False),
     ("4x10 square",         4, 10, [10, 10, 10, 10, 10],  None,             False),
     ("triangle, height 84", 3, 84, [84, 56, 28, 0],       None,             False),
 ]
 
 
-def build_gmp():
-    out = "/tmp/na_query_bench"
-    subprocess.check_call(
-        ["gcc", "-O2", *gmp_cflags(), "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
-    return out
+def measure(fn):
+    """Per-call (mean, stdev) seconds for a fast routine, timeit-style: warm up,
+    auto-scale the inner repetition count so each batch runs >= MIN_BATCH, then
+    take REPEAT batches so the spread (not just the best case) is visible."""
+    for _ in range(WARMUP):
+        fn()
+
+    reps = 1
+    while True:
+        t0 = time.perf_counter()
+        for _ in range(reps):
+            fn()
+        dt = time.perf_counter() - t0
+        if dt >= MIN_BATCH:
+            break
+        # scale up toward MIN_BATCH (with headroom); guard against dt == 0
+        reps = max(reps + 1, int(reps * MIN_BATCH / dt * 1.2)) if dt > 0 else reps * 2
+
+    per_call = []
+    for _ in range(REPEAT):
+        t0 = time.perf_counter()
+        for _ in range(reps):
+            fn()
+        per_call.append((time.perf_counter() - t0) / reps)
+    mean = statistics.fmean(per_call)
+    sd = statistics.stdev(per_call) if len(per_call) > 1 else 0.0
+    return mean, sd
 
 
-def na_query(binary, m, n, U, L):
-    inp = " ".join(map(str, U)) + "\n"
-    if L is not None:
-        inp += " ".join(map(str, L)) + "\n"
-    out = subprocess.run([binary, str(m), str(n)],
-                         input=inp, capture_output=True, text=True).stdout
-    for line in out.splitlines():
-        if line.startswith("query_value"):
-            return int(line.split()[1])
-    return None
+def measure_slow(fn, repeat=REPEAT, budget=TOPCOM_BUDGET):
+    """Per-call (mean, stdev, n_batches) seconds for a slow, expensive baseline
+    (one call per batch).  Warm up once, then time up to `repeat` calls, stopping
+    early once cumulative measured time exceeds `budget`.  Returns None if the
+    warmup call itself returns None (e.g. TOPCOM gave up: non-convex or > cap)."""
+    if fn() is None:                          # warmup; also a validity probe
+        return None
+    times = []
+    for _ in range(repeat):
+        t0 = time.perf_counter()
+        fn()
+        times.append(time.perf_counter() - t0)
+        if sum(times) >= budget:
+            break
+    mean = statistics.fmean(times)
+    sd = statistics.stdev(times) if len(times) > 1 else 0.0
+    return mean, sd, len(times)
+
+
+def fmt_profile(U, L):
+    """Compact upper/lower boundary heights that define the region's geometry;
+    a flat floor (lower is None) shows as 'flat'."""
+    upper = ",".join(map(str, U))
+    lower = "flat" if L is None else ",".join(map(str, L))
+    return f"{upper} / {lower}"
 
 
 def topcom_count(U, L, cap=2_000_000):
@@ -89,32 +141,25 @@ def topcom_count(U, L, cap=2_000_000):
     return c
 
 
-def time_na_query(binary, m, n, U, L):
-    best, count = float("inf"), None
-    for _ in range(TRIALS):
-        t0 = time.perf_counter()
-        count = na_query(binary, m, n, U, L)
-        best = min(best, time.perf_counter() - t0)
-    return count, best
-
-
 def main():
-    binary = build_gmp()
-    print(f"{'region':22} {'triangulations':>18}  {'na_query':>10}  {'TOPCOM':>12}")
-    print("-" * 68)
+    print(f"{'region':20} {'upper / lower':21} {'triangulations':>16}  "
+          f"{'na_query (mean +/- sd)':>24}  {'TOPCOM (mean +/- sd)':>22}")
+    print("-" * 111)
     for name, m, n, U, L, feasible in CASES:
-        count, na = time_na_query(binary, m, n, U, L)
+        count = na_query(m, n, U, L)
+        mean, sd = measure(lambda: na_query(m, n, U, L))
         shown = str(count) if count < 10**9 else f"~{count:.1e}"
+        na = f"{mean * 1e3:.3f} +/- {sd * 1e3:.3f} ms"
+
         if not feasible:
             topcom = "infeasible"
         elif not HAS_CYTOOLS:
             topcom = "no cytools"
         else:
             floor = L if L is not None else [0] * (m + 1)
-            t0 = time.perf_counter()
-            tc = topcom_count(U, floor)
-            topcom = f"{time.perf_counter() - t0:.2f} s" if tc is not None else "too many"
-        print(f"{name:22} {shown:>18}  {na * 1000:7.1f} ms  {topcom:>12}")
+            res = measure_slow(lambda: topcom_count(U, floor))
+            topcom = "too many" if res is None else f"{res[0]:.2f} +/- {res[1]:.2f} s"
+        print(f"{name:20} {fmt_profile(U, L):21} {shown:>16}  {na:>24}  {topcom:>22}")
 
 
 if __name__ == "__main__":
