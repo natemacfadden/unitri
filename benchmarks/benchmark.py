@@ -25,6 +25,7 @@ column needs cytools (skipped, but na_query is still timed, if it is absent).
     python benchmarks/benchmark.py
 """
 import os
+import sys
 import subprocess
 import time
 
@@ -33,6 +34,10 @@ try:
     HAS_CYTOOLS = True
 except ImportError:
     HAS_CYTOOLS = False
+
+# the GMP-discovery helper lives at the repo root (shared with setup.py)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from _gmp import gmp_cflags
 
 NA_QUERY_C = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           "..", "unitri", "na-query.c")
@@ -47,16 +52,6 @@ CASES = [
     ("4x10 square",         4, 10, [10, 10, 10, 10, 10],  None,             False),
     ("triangle, height 84", 3, 84, [84, 56, 28, 0],       None,             False),
 ]
-
-
-def gmp_cflags():
-    # GMP is on the default path on Linux/conda; Homebrew on macOS puts it elsewhere
-    try:
-        prefix = subprocess.check_output(["brew", "--prefix", "gmp"],
-                                         text=True, stderr=subprocess.DEVNULL).strip()
-    except Exception:
-        return []
-    return [f"-I{prefix}/include", f"-L{prefix}/lib"]
 
 
 def build_gmp():
