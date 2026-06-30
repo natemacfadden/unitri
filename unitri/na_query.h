@@ -1769,6 +1769,16 @@ printf("] = %ld\n",recurrence_sum);
 // upper has m+1 heights; lower has m+1 heights, or is NULL for a flat floor.
 static int set_query(const int *upper, const int *lower){
   query_found = 0;
+  // Validate heights at the API boundary so this stays the "no-exit" path: an
+  // out-of-range value (notably n+1, which equals the absent-vertex marker n1)
+  // would otherwise reach exit() in profile_area/profile_height_at.  The CLI
+  // does the equivalent check while parsing each height token.
+  for (int c=0; c<=m; c++)
+    if (upper[c] < 0 || upper[c] > n) return NA_ERR_PROFILE;
+  if (lower)
+    for (int c=0; c<=m; c++)
+      if (lower[c] < 0 || lower[c] > n) return NA_ERR_PROFILE;
+
   for (int c=0; c<=m; c++) query_height[c] = upper[c];
   query_enabled = 1;
   query_area = profile_area(query_height);
