@@ -33,14 +33,16 @@ gcc -O2 -DGMP -o na-query unitri/na-query.c -lgmp
 The `-DGMP` build needs libgmp installed -- `apt install libgmp-dev` on
 Debian/Ubuntu, `brew install gmp` on macOS, or `conda install -c conda-forge gmp`.
 
-If GMP isn't on the default search path (e.g. Homebrew on macOS), point the
-compiler at it with `-I` (headers) and `-L` (library). Apple Silicon paths are
-shown; on Intel macOS use `/usr/local/...`:
+If GMP isn't on the compiler's default search path (Homebrew on macOS, or a
+conda env), let the bundled `_gmp.py` locate it -- it queries `pkg-config` and
+falls back to Homebrew/conda -- and splice its flags into the build:
 
 ```sh
-gcc -O2 -DGMP -I/opt/homebrew/opt/gmp/include -L/opt/homebrew/opt/gmp/lib \
-    -o na-query unitri/na-query.c -lgmp
+gcc -O2 $(python3 _gmp.py) -DGMP -o na-query unitri/na-query.c -lgmp
 ```
+
+The same helper is what `setup.py` uses to build the Python extension, so the C
+and Python builds locate GMP identically.
 
 ## Querying a region (upper / lower boundaries)
 
@@ -159,13 +161,13 @@ unitri/
 │   ├── test_topcom_convex.py # randomized TOPCOM cross-check
 │   ├── check_topcom.py       # standalone TOPCOM cross-check (small convex regions)
 │   ├── conftest.py           # shared fixtures (builds the GMP binary)
-│   ├── transforms.py         # GL(2,Z) invariance helpers
-│   └── _gmp.py               # locate libgmp (Homebrew on macOS)
+│   └── transforms.py         # GL(2,Z) invariance helpers
 ├── benchmarks/
 │   ├── benchmark.py          # na_query vs TOPCOM timing (the Performance table)
 │   └── profile.sh            # wall-time + peak-memory profiler for any command
 ├── pyproject.toml
 ├── setup.py
+├── _gmp.py                   # locate GMP (pkg-config -> Homebrew/conda); shared by setup.py + tests
 ├── MANIFEST.in
 ├── CITATION.cff
 └── LICENSE

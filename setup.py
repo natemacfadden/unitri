@@ -7,18 +7,16 @@ produces an importable `unitri.na_query` extension wrapping unitri/na_query.h
 Cython and libgmp.
 """
 import os
-import subprocess
+import sys
 
 from setuptools import Extension, setup
 from Cython.Build import cythonize
 
-# locate GMP (Homebrew on macOS; otherwise assume it's on the default path)
-gmp_inc, gmp_lib = [], []
-try:
-    prefix = subprocess.check_output(["brew", "--prefix", "gmp"]).decode().strip()
-    gmp_inc, gmp_lib = [os.path.join(prefix, "include")], [os.path.join(prefix, "lib")]
-except Exception:
-    pass
+# locate GMP via the shared helper (pkg-config, falling back to Homebrew/conda)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _gmp import gmp_dirs
+
+gmp_inc, gmp_lib = gmp_dirs()
 
 setup(
     ext_modules=cythonize(
@@ -28,6 +26,8 @@ setup(
             include_dirs=["unitri"] + gmp_inc,
             library_dirs=gmp_lib,
             libraries=["gmp"],
+            # rpath so the built extension finds libgmp without LD_LIBRARY_PATH
+            extra_link_args=[f"-Wl,-rpath,{d}" for d in gmp_lib],
             # pull na_query.h's implementation into the extension, big-int back-end
             define_macros=[("NA_QUERY_IMPLEMENTATION", None), ("GMP", None)],
             extra_compile_args=["-O3"],

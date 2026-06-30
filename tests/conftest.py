@@ -16,10 +16,13 @@
 # =============================================================================
 """Shared fixtures for the unitri test suite."""
 import os
+import sys
 import subprocess
 
 import pytest
 
+# the GMP-discovery helper lives at the repo root (shared with setup.py)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from _gmp import gmp_cflags
 
 NA_QUERY_C = os.path.join(os.path.dirname(os.path.abspath(__file__)),

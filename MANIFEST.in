@@ -1,1 +1,2 @@
 recursive-include unitri *.pyx *.h *.c
+include _gmp.py

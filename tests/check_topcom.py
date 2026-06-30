@@ -39,8 +39,11 @@ Usage:  python3 check_topcom.py     (needs cytools + a GMP toolchain)
 """
 
 import os
+import sys
 import subprocess
 
+# the GMP-discovery helper lives at the repo root (shared with setup.py)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from _gmp import gmp_cflags
 from cytools import Polytope
 
