@@ -34,3 +34,12 @@ packages = ["unitri"]
 
 [tool.setuptools.package-data]
 unitri = ["*.pyx", "*.h", "*.c"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+
+[tool.ruff.lint]
+# ruff's default rule set, pinned so a ruff upgrade can't silently change what
+# CI enforces: pyflakes (F) plus pycodestyle import/statement/runtime errors.
+select = ["E4", "E7", "E9", "F"]
