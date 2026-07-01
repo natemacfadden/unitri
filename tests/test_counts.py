@@ -38,6 +38,7 @@ import subprocess
 
 import pytest
 
+import unitri
 from _cli import run_query
 
 MEM_CAP = 8e9   # bytes; skip cases whose pointer skeleton exceeds this
@@ -113,3 +114,24 @@ def _ftable(binary, m, n):
 @pytest.mark.parametrize("m,n,expected", TABLES, ids=[f"{m}x{n}" for m, n, _ in TABLES])
 def test_ftable_mode(na_query_bin, m, n, expected):
     assert _ftable(na_query_bin, m, n) == expected
+
+
+# The README Performance-table regions as convex-hull vertices, so the point-set
+# API is exercised on the big counts too -- both the exact GMP path and the
+# parallel mod-prime + CRT path must reproduce them.  (These vertices hull to the
+# same regions as the profiles above.)
+VERTEX_CASES = [
+    ("3x2 rectangle",  [(0, 0), (0, 2), (3, 0), (3, 2)],                          852),
+    ("polygon 10653",  [(0, 2), (1, 3), (2, 0), (3, 0), (3, 3), (4, 1), (4, 2)],  10653),
+    ("polygon 840021", [(0, 3), (1, 1), (1, 4), (2, 0), (3, 0), (3, 4), (4, 1), (4, 3)], 840021),
+    ("4x4 square",     [(0, 0), (0, 4), (4, 0), (4, 4)],                          736983568),
+    ("4x10 square",    [(0, 0), (0, 10), (4, 0), (4, 10)],                        584455230176565718869688),
+    ("triangle h84",   [(0, 0), (0, 84), (3, 0)],
+     761342982944289349099618507228200078481281500600912757801568059775),
+]
+
+
+@pytest.mark.parametrize("name,verts,expected", VERTEX_CASES, ids=[c[0] for c in VERTEX_CASES])
+def test_benchmark_region_pointset(name, verts, expected):
+    assert unitri.count_triangulations(verts) == expected
+    assert unitri.count_triangulations_parallel(verts) == expected
