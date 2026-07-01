@@ -177,7 +177,14 @@ def count_triangulations(points: Iterable[tuple[int, int]]) -> int:
     the next orientation only if na_query rejects one. Requires the built
     extension.
     """
-    from .na_query import na_query
+    try:
+        from .na_query import na_query
+    except ImportError as exc:
+        raise ImportError(
+            "count_triangulations needs the compiled GMP extension (build with "
+            "`pip install -e .`, which needs libgmp).  Without GMP, use "
+            "count_triangulations_parallel (mod-prime + CRT)."
+        ) from exc
     pts = sorted({(int(x), int(y)) for x, y in points})
     if len(pts) < 3:
         raise ValueError("need at least 3 distinct points")

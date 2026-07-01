@@ -22,10 +22,13 @@ Stepniczka and Nate MacFadden.
 pip install -e .          # builds the Cython extension; needs a C toolchain + libgmp
 ```
 
-libgmp comes from `apt install libgmp-dev` (Debian/Ubuntu), `brew install gmp`
-(macOS), or `conda install -c conda-forge gmp`. The build locates GMP
-automatically -- `pkg-config`, falling back to Homebrew/conda via the bundled
-`_gmp.py` -- so Homebrew and conda environments work without extra flags.
+libgmp is **optional**: it powers the fast single-run exact counter
+(`count_triangulations`, `na_query`). It comes from `apt install libgmp-dev`
+(Debian/Ubuntu), `brew install gmp` (macOS), or `conda install -c conda-forge
+gmp`, and the build finds it automatically (`pkg-config`, falling back to
+Homebrew/conda via the bundled `_gmp.py`). **Without GMP**, `pip install` simply
+skips that extension and you count via `count_triangulations_parallel`
+(mod-prime + CRT, needs only a C compiler) -- see below.
 
 ## Counting a polygon's unimodular triangulations
 
@@ -52,6 +55,17 @@ The count is exact (arbitrary precision). The point-set path is for convex
 regions; for non-convex regions -- valleys, concave tops -- describe them
 directly with boundary profiles, below.
 
+For large counts, or when you don't have GMP, count the same thing **in parallel
+across cores** via the mod-prime + CRT path (needs only a C compiler, no libgmp):
+
+```python
+unitri.count_triangulations_parallel([(0,0), (4,0), (3,2), (1,2)])   # 140, in parallel
+```
+
+It runs the mod-prime counter for successive primes across cores and CRT-combines
+them into the exact integer -- the GMP-free way to get exact counts, and often
+faster than the single GMP run for very large ones.
+
 ## The counting core (C CLI and boundary profiles)
 
 Under the point-set convenience is a single-header C counter, `na_query.h`
@@ -68,6 +82,8 @@ gcc -O2 -DGMP -o na-query unitri/na-query.c -lgmp     # big-integer: the whole c
 
 If GMP isn't on the compiler's default path (Homebrew, or a conda env), splice
 in the bundled locator's flags: `gcc -O2 $(python3 _gmp.py) -DGMP -o na-query unitri/na-query.c -lgmp`.
+Or just use the `Makefile`: `make na-query-mod` (mod-prime), `make na-query`
+(GMP), or `make both`.
 
 Run `./na-query <m> <n> [prime_index]` and pipe the region to stdin, one profile
 per line:
@@ -141,6 +157,7 @@ unitri/
 │   ├── na_query.h      # the counter: stb-style single header, mod-prime (default) or GMP (-DGMP)
 │   ├── na-query.c      # thin CLI wrapper around na_query.h
 │   ├── crt_combine.py  # combine the default build's per-prime residues into the exact count
+│   ├── crt_parallel.py # GMP-free exact counts: parallel mod-prime runs + CRT
 │   ├── __main__.py     # CLI: python -m unitri (count a lattice point set)
 │   └── __init__.py
 ├── tests/
@@ -158,6 +175,7 @@ unitri/
 ├── benchmarks/
 │   ├── benchmark.py             # na_query vs TOPCOM timing (the Performance table)
 │   └── profile.sh               # wall-time + peak-memory profiler for any command
+├── Makefile                     # build the na-query CLI (make both / na-query / na-query-mod)
 ├── pyproject.toml
 ├── setup.py
 ├── _gmp.py                      # locate GMP (pkg-config -> Homebrew/conda); shared by setup.py + tests

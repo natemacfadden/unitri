@@ -85,6 +85,12 @@ def test_convex_polygon_count(name, verts, expected):
     assert unitri.count_triangulations(_lattice_points(verts)) == expected
 
 
+@pytest.mark.parametrize("name,verts,expected", POLYGONS, ids=[p[0] for p in POLYGONS])
+def test_convex_polygon_count_parallel(name, verts, expected):
+    # GMP-free path (parallel mod-prime + CRT) must agree with the exact count
+    assert unitri.count_triangulations_parallel(_lattice_points(verts)) == expected
+
+
 @pytest.mark.skipif(not HAS_CYTOOLS, reason="cytools not installed")
 @pytest.mark.parametrize("name,verts,expected", POLYGONS, ids=[p[0] for p in POLYGONS])
 def test_convex_polygon_matches_topcom(name, verts, expected):
