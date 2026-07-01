@@ -906,16 +906,6 @@ static int na_query_compute(void){
       fprintf(stderr, "\r  computing area %d / %d ...", twice_area, query_area);
     }
 
-    // debug print statements
-    #ifdef DEBUG
-      printf("====================== twice_area = %d =======================\n",
-             twice_area);
-      printf("(* Current/Maximal memory allocation: %7.3lf / %6.2lfg\n",
-             ((double)alloc_total)/1e9, ((double)max_alloc_total)/1e9);
-      printf("(including %6.2lfg for pointers) *)\n",
-             ((double)alloc_pointers)/1e9);
-    #endif
-
     // for H[twice_area>m], just use memory allocated for H[twice_area-m-1]
     // (said memory is already allocated; H[twice_area-m-1] is no longer needed)
     if (twice_area>m) {
@@ -1320,17 +1310,6 @@ static int na_query_compute(void){
              maybe_record_query(
                 H[twice_area][shape_index][height_m2][height_m1][height_m]);
 
-#ifdef DEBUG
-printf("twice_area=%d  H[%d",twice_area,height_0);
-for (int coord=1; coord<=m; coord++) {
-  if(height[coord]==n1)printf(" ."); else printf(" %d",height[coord]);
-}
-#ifdef GMP
-gmp_printf("] = %Zd\n",recurrence_sum);
-#else
-printf("] = %ld\n",recurrence_sum);
-#endif
-#endif
            } /* end of loop by height[m] */
          } /* end of loop by height[m-1] */
        } /* end of loop by height[m-2] */
@@ -1677,17 +1656,6 @@ printf("] = %ld\n",recurrence_sum);
              maybe_record_query(
                 H[twice_area][shape_index][height_m2][height_m1][height_m]);
 
-#ifdef DEBUG
-printf("twice_area=%d  H[%d",twice_area,height_0);
-for (int coord=1; coord<=m; coord++) {
-  if(height[coord]==n1)printf(" ."); else printf(" %d",height[coord]);
-}
-#ifdef GMP
-gmp_printf("] = %Zd\n",recurrence_sum);
-#else
-printf("] = %ld\n",recurrence_sum);
-#endif
-#endif
                } /* end of loop by height[m] */
              } /* end of loop by height[m-1] */
            } /* end of loop by height[m-2] */
