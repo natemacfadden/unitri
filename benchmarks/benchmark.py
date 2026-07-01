@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
-"""Timing benchmark: na_query (transfer-matrix counting) vs TOPCOM (enumeration).
+"""Timing benchmark: na_query (dynamic-programming counting) vs TOPCOM (enumeration).
 
 na_query counts triangulations without enumerating them, so its cost depends on
 the bounding box (m, n), not the number of triangulations; TOPCOM enumerates one

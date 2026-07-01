@@ -2,7 +2,11 @@
 
 **Paper:** [Further Bounding the Kreuzer-Skarke Landscape](https://arxiv.org/abs/2602.16909) (arXiv:2602.16909)
 
-Exactly counts the unimodular (fine) triangulations of a lattice polygon -- given by an `m x n` bounding box plus upper/lower boundary profiles, so general regions and not just rectangles.
+Exactly counts the fine (unimodular) triangulations of a lattice polygon. For a
+convex polygon, hand it the polygon's lattice points and get the exact count;
+for more general regions it also takes an explicit upper/lower boundary
+description. It counts *without enumerating*, so it reaches regions with
+astronomically many triangulations that enumeration tools cannot.
 
 Based on the original program by **Stepan Orevkov**
 (<http://picard.ups-tlse.fr/~orevkov>), reworked and generalized by Nate
@@ -12,116 +16,96 @@ Stepniczka and Nate MacFadden.
 > **If there are any bugs/issues in this code, assume they are due to Nate
 > MacFadden's rework and *not* Stepan Orevkov's original code.**
 
-## Build
-
-The counting code is the single-header `na_query.h` (stb-style); `na-query.c`
-is a thin CLI that pulls in its implementation. Width `m` and height `n` are
-**runtime arguments**, so one binary handles every size at runtime -- no
-recompiling. The default build computes **modulo a prime**:
+## Install
 
 ```sh
-gcc -O2 -o na-query unitri/na-query.c
+pip install -e .          # builds the Cython extension; needs a C toolchain + libgmp
 ```
 
-Add `-DGMP` for the **big-integer** back-end (one run gives the whole
-count, no CRT needed); this links libgmp:
+libgmp comes from `apt install libgmp-dev` (Debian/Ubuntu), `brew install gmp`
+(macOS), or `conda install -c conda-forge gmp`. The build locates GMP
+automatically -- `pkg-config`, falling back to Homebrew/conda via the bundled
+`_gmp.py` -- so Homebrew and conda environments work without extra flags.
 
-```sh
-gcc -O2 -DGMP -o na-query unitri/na-query.c -lgmp
-```
+## Counting a polygon's unimodular triangulations
 
-The `-DGMP` build needs libgmp installed -- `apt install libgmp-dev` on
-Debian/Ubuntu, `brew install gmp` on macOS, or `conda install -c conda-forge gmp`.
-
-If GMP isn't on the compiler's default search path (Homebrew on macOS, or a
-conda env), let the bundled `_gmp.py` locate it -- it queries `pkg-config` and
-falls back to Homebrew/conda -- and splice its flags into the build:
-
-```sh
-gcc -O2 $(python3 _gmp.py) -DGMP -o na-query unitri/na-query.c -lgmp
-```
-
-The same helper is what `setup.py` uses to build the Python extension, so the C
-and Python builds locate GMP identically.
-
-## Querying a region (upper / lower boundaries)
-
-Run `./na-query <m> <n> [prime_index]` (width `m >= 3`; `prime_index` selects
-the modulus in the default build, ignored under `-DGMP`). The program reads an
-optional target region from **stdin**, one profile per line, and reports the
-count for that region:
-
-- **Line 1 -- upper boundary** (the query): `m+1` heights `h_0 h_1 ... h_m`,
-  each an integer in `[0, n]`, or `.` for an *absent* vertex (the boundary
-  passes between lattice points there). The endpoints `h_0` and `h_m` must be
-  present.
-- **Line 2 -- lower boundary / floor** (optional): same format. A blank line or
-  Ctrl-D leaves the floor flat at 0. The upper profile must lie on or above the
-  floor.
-
-With no input at all (an empty pipe / immediate Ctrl-D), the program skips the
-query and just prints the flat-square `f(m,k)` table for `k = 1..n`.
-
-Examples (big-integer build, `-DGMP`).
-
-The full 4x4 square (floor defaults to flat 0) -- prints `query_value 736983568`:
-
-```sh
-echo "4 4 4 4 4" | ./na-query 4 4
-```
-
-A region over a non-flat floor -- prints `query_value 14032211`:
-
-```sh
-printf '4 4 4 4 4\n0 1 0 1 0\n' | ./na-query 4 4
-```
-
-An absent vertex (`.`) on the upper boundary -- prints `query_value 35`:
-
-```sh
-echo "0 . 3 . 0" | ./na-query 4 4
-```
-
-The result prints as `query_value <count>` -- the whole integer with `-DGMP`, or a
-residue mod the chosen prime in the default build (combine several primes with
-`unitri/crt_combine.py` to recover the exact count).
-
-## Python (Cython binding)
-
-`unitri/na_query.pyx` wraps the in-process counting API so you can count from
-Python directly -- no subprocess, no stdout parsing. Build the extension (needs
-Cython and libgmp):
-
-```sh
-pip install -e .                      # or: python3 setup.py build_ext --inplace
-```
-
-Then:
+Give `count_triangulations` the polygon's lattice points and it returns the
+exact number of fine (unimodular) triangulations:
 
 ```python
 import unitri
-unitri.na_query(4, 4, [4, 4, 4, 4, 4])           # 736983568  (the 4x4 square)
-unitri.na_query(3, 12, [12, 8, 4, 0])            # 668517487  (a base-3 triangle)
-unitri.na_query(4, 4, [4,4,4,4,4], [0,1,0,1,0])  # 14032211   (over a non-flat floor)
+
+unitri.count_triangulations([(0,0), (4,0), (3,2), (1,2)])          # 140    (a trapezoid)
+unitri.count_triangulations([(0,0), (4,0), (3,3), (1,3), (0,1)])   # 10843  (a pentagon)
 ```
 
-`unitri.na_query(m, n, upper, lower=None)` returns the exact count as a Python
-int (arbitrary precision). `upper`/`lower` are the `m+1` boundary heights, as in
-the CLI; omit `lower` for a flat floor at 0.
+There is also a command-line front end. It reads a point set from a file or
+stdin in almost any bracket/comma/whitespace format -- a pasted numpy array,
+`[x, y]` lists, or `x y` per line:
 
-To count an arbitrary lattice **point set** (not just a profile), use
-`unitri.count_triangulations(points)`: it traces the convex hull in a
-minimal-width orientation, builds the profile, and calls `na_query`.
-`unitri.points_to_profiles(points)` returns that `(m, n, upper, lower)` without
-counting. There is also a CLI -- `python -m unitri [points_file]` (reads stdin
-if no file; accepts a pasted numpy array, `[x, y]` lists, or `x y` per line).
+```sh
+echo "[[0,0],[4,0],[3,3],[1,3],[0,1]]" | python -m unitri     # -> 10843
+python -m unitri points.txt
+```
+
+The count is exact (arbitrary precision). The point-set path is for convex
+regions; for non-convex regions -- valleys, concave tops -- describe them
+directly with boundary profiles, below.
+
+## The counting core (C CLI and boundary profiles)
+
+Under the point-set convenience is a single-header C counter, `na_query.h`
+(stb-style), driven by an `m x n` bounding box and upper/lower boundary
+*profiles*. This is the lower-level, more general interface -- it handles any
+region between a lower and an upper boundary, including non-convex ones -- and
+it needs no Python. `na-query.c` is a thin CLI that pulls in the implementation;
+width `m` and height `n` are runtime arguments, so one binary handles every size:
+
+```sh
+gcc -O2 -o na-query unitri/na-query.c                 # default: counts modulo a prime
+gcc -O2 -DGMP -o na-query unitri/na-query.c -lgmp     # big-integer: the whole count
+```
+
+If GMP isn't on the compiler's default path (Homebrew, or a conda env), splice
+in the bundled locator's flags: `gcc -O2 $(python3 _gmp.py) -DGMP -o na-query unitri/na-query.c -lgmp`.
+
+Run `./na-query <m> <n> [prime_index]` and pipe the region to stdin, one profile
+per line:
+
+- **Line 1 -- upper boundary** (the query): `m+1` heights `h_0 h_1 ... h_m`, each
+  an integer in `[0, n]`, or `.` for an *absent* vertex (the boundary passes
+  between lattice points there). The endpoints `h_0` and `h_m` must be present.
+- **Line 2 -- lower boundary / floor** (optional): same format; a blank line or
+  Ctrl-D leaves the floor flat at 0. The upper profile must lie on or above it.
+
+```sh
+echo "4 4 4 4 4" | ./na-query 4 4                  # query_value 736983568  (full 4x4 square)
+printf '4 4 4 4 4\n0 1 0 1 0\n' | ./na-query 4 4    # query_value 14032211   (over a non-flat floor)
+echo "0 . 3 . 0" | ./na-query 4 4                  # query_value 35          (an absent vertex)
+```
+
+The result prints as `query_value <count>` -- the whole integer under `-DGMP`, or
+a residue mod the chosen prime in the default build (combine several primes with
+`unitri/crt_combine.py` to recover the exact count). With no input at all,
+`na-query <m> <n>` prints the flat-rectangle `f(m,k)` table for `k = 1..n`.
+
+The same profile interface is available in-process from Python as
+`unitri.na_query(m, n, upper, lower=None)` -- what `count_triangulations` calls
+under the hood; `upper`/`lower` are the `m+1` boundary heights, omit `lower` for
+a flat floor at 0:
+
+```python
+unitri.na_query(4, 4, [4, 4, 4, 4, 4])              # 736983568  (the 4x4 square)
+unitri.na_query(3, 12, [12, 8, 4, 0])               # 668517487  (a base-3 triangle)
+unitri.na_query(4, 4, [4,4,4,4,4], [0,1,0,1,0])     # 14032211   (over a non-flat floor)
+```
 
 Run the tests with `pip install -e .[test]` (adds pytest, plus cytools for the
 TOPCOM cross-checks) then `pytest tests/`.
 
 ## Performance
 
-`na_query` counts triangulations with a transfer-matrix recurrence -- it never
+`na_query` counts triangulations with a dynamic-programming recurrence -- it never
 enumerates them -- so its cost depends only on the bounding box `(m, n)`, not on
 the (often astronomically large) number of triangulations. TOPCOM, by contrast,
 enumerates one triangulation at a time, so its cost scales with the count and
@@ -152,27 +136,34 @@ Counts agree exactly with TOPCOM wherever TOPCOM can finish. Reproduce with
 ```
 unitri/
 ├── unitri/
+│   ├── profiles.py     # point set -> (m,n,upper,lower); count_triangulations (the main entry)
+│   ├── na_query.pyx    # Cython binding: in-process na_query(m, n, upper, lower)
 │   ├── na_query.h      # the counter: stb-style single header, mod-prime (default) or GMP (-DGMP)
 │   ├── na-query.c      # thin CLI wrapper around na_query.h
-│   ├── na_query.pyx    # Cython binding: in-process na_query(m, n, upper, lower)
-│   ├── profiles.py     # lattice point set -> (m, n, upper, lower); count_triangulations
 │   ├── crt_combine.py  # combine the default build's per-prime residues into the exact count
 │   ├── __main__.py     # CLI: python -m unitri (count a lattice point set)
 │   └── __init__.py
 ├── tests/
-│   ├── test_counts.py        # exact counts vs literature / TOPCOM
-│   ├── test_symmetry.py      # hard x<->m-x reflection cases
-│   ├── test_unimodular.py    # unimodular invariance
-│   ├── test_topcom_convex.py # randomized TOPCOM cross-check
-│   ├── check_topcom.py       # standalone TOPCOM cross-check (small convex regions)
-│   ├── conftest.py           # shared fixtures (builds the GMP binary)
-│   └── transforms.py         # GL(2,Z) invariance helpers
+│   ├── test_convex_polygons.py  # general convex polygons vs TOPCOM (the main use-case)
+│   ├── test_topcom_convex.py    # randomized convex point sets vs TOPCOM
+│   ├── test_counts.py           # exact counts vs literature / TOPCOM
+│   ├── test_symmetry.py         # hard x<->m-x reflection cases
+│   ├── test_unimodular.py       # unimodular invariance
+│   ├── test_mod_prime.py        # default mod-prime backend end-to-end via CRT
+│   ├── test_crt_combine.py      # crt_combine unit tests
+│   ├── test_readme_examples.py  # the examples in this README, asserted
+│   ├── test_ftable.py           # flat-rectangle f(m,k) table mode
+│   ├── check_topcom.py          # standalone TOPCOM cross-check (fixed convex regions)
+│   ├── conftest.py              # shared fixtures (builds the GMP/mod-prime binaries)
+│   ├── _cli.py                  # shared "run the na-query CLI" helper
+│   ├── _topcom.py               # shared TOPCOM enumeration helper
+│   └── transforms.py            # GL(2,Z) invariance helpers
 ├── benchmarks/
-│   ├── benchmark.py          # na_query vs TOPCOM timing (the Performance table)
-│   └── profile.sh            # wall-time + peak-memory profiler for any command
+│   ├── benchmark.py             # na_query vs TOPCOM timing (the Performance table)
+│   └── profile.sh               # wall-time + peak-memory profiler for any command
 ├── pyproject.toml
 ├── setup.py
-├── _gmp.py                   # locate GMP (pkg-config -> Homebrew/conda); shared by setup.py + tests
+├── _gmp.py                      # locate GMP (pkg-config -> Homebrew/conda); shared by setup.py + tests
 ├── MANIFEST.in
 ├── CITATION.cff
 └── LICENSE
