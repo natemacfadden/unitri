@@ -177,3 +177,7 @@ unitri/
 ├── CITATION.cff
 └── LICENSE
 ```
+
+## License
+
+[GPLv3](LICENSE). Copyright (c) 2026 Nate MacFadden.
