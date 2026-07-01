@@ -19,33 +19,20 @@
 commonly built -- arithmetic path is otherwise untested.  Here we collect the
 count modulo successive primes and reconstruct the exact integer via crt_combine,
 checking it against a known value."""
-import subprocess
-
 from unitri.crt_combine import combine, PRIMES
+
+from _cli import run_query
 
 # 4x4 square: known exact count (cf. test_counts.py and crt_combine's docstring)
 M, N, U, L = 4, 4, [4, 4, 4, 4, 4], None
 EXACT = 736983568
 
 
-def _residue(binary, m, n, U, L, prime_index):
-    """Run the mod-prime CLI for prime[prime_index] and return the residue."""
-    inp = " ".join(map(str, U)) + "\n"
-    if L is not None:
-        inp += " ".join(map(str, L)) + "\n"
-    out = subprocess.run([binary, str(m), str(n), str(prime_index)],
-                         input=inp, capture_output=True, text=True).stdout
-    for line in out.splitlines():
-        if line.startswith("query_value"):
-            return int(line.split()[1])
-    return None
-
-
 def test_single_residue_matches(na_query_mod_bin):
     # the default backend should compute the count reduced modulo prime[0]
-    r = _residue(na_query_mod_bin, M, N, U, L, 0)
-    assert r is not None, "no query_value (the run may have failed)"
-    assert r == EXACT % PRIMES[0]
+    tok = run_query(na_query_mod_bin, M, N, U, L, prime_index=0)
+    assert tok is not None, "no query_value (the run may have failed)"
+    assert int(tok) == EXACT % PRIMES[0]
 
 
 def test_residues_crt_to_exact(na_query_mod_bin):
@@ -57,8 +44,8 @@ def test_residues_crt_to_exact(na_query_mod_bin):
         k += 1
     congruences = []
     for i in range(k):
-        r = _residue(na_query_mod_bin, M, N, U, L, i)
-        assert r is not None, f"no query_value for prime_index {i}"
-        congruences.append((r, PRIMES[i]))
+        tok = run_query(na_query_mod_bin, M, N, U, L, prime_index=i)
+        assert tok is not None, f"no query_value for prime_index {i}"
+        congruences.append((int(tok), PRIMES[i]))
     value, _ = combine(congruences)
     assert value == EXACT

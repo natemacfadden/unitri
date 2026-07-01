@@ -37,9 +37,9 @@ time) and are still checked for reflection invariance.
 
     pytest tests/test_symmetry.py
 """
-import subprocess
-
 import pytest
+
+from _cli import run_query
 
 TOPCOM_MAX_POINTS = 17     # CYTools enumeration is infeasible at/above this
 
@@ -66,18 +66,6 @@ CASES = [
     ("nontrivial U/L, asymmetric",   4, 6, "6 5 4 3 3", "0 1 2 3 3", 14303),
     ("nontrivial U/L, reversed",     4, 6, "3 3 4 5 6", "3 3 2 1 0", 14303),
 ]
-
-
-def query(binary, m, n, U, L):
-    """Return the count string, or None on not_found / an invalid profile."""
-    inp = " ".join(U) + "\n" + (" ".join(L) + "\n" if L else "")
-    out = subprocess.run([binary, str(m), str(n)],
-                         input=inp, capture_output=True, text=True).stdout
-    for line in out.splitlines():
-        if line.startswith("query_value"):
-            tok = line.split()[1]
-            return None if tok == "not_found" else tok
-    return None
 
 
 def _absent(tok, n):
@@ -129,12 +117,12 @@ def topcom_count(m, n, U, L):
 def test_symmetry(na_query_bin, name, m, n, U, L, expected):
     Us, Ls = U.split(), (L.split() if L else None)
 
-    got = query(na_query_bin, m, n, Us, Ls)
+    got = run_query(na_query_bin, m, n, Us, Ls)
     assert got is not None, "not_found / invalid profile"
     assert got == str(expected), f"count {got} != expected {expected}"
 
     # the reversed profile is a unimodular reflection -> same count
-    rev = query(na_query_bin, m, n, Us[::-1], Ls[::-1] if Ls else None)
+    rev = run_query(na_query_bin, m, n, Us[::-1], Ls[::-1] if Ls else None)
     assert rev == got, f"not reflection-invariant (reversed={rev})"
 
     # where the region is small enough, TOPCOM must agree

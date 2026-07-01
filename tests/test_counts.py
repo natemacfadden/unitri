@@ -30,9 +30,9 @@ Sources for the expected values:
 Memory for this code's index skeleton grows like (n+2)^(m-1); cases needing
 more than MEM_CAP are skipped (they require a big-memory machine).
 """
-import subprocess
-
 import pytest
+
+from _cli import run_query
 
 MEM_CAP = 8e9   # bytes; skip cases whose pointer skeleton exceeds this
 
@@ -62,18 +62,6 @@ def skeleton_bytes(m, n):
     return (m + 1) * (n2 ** (m - 3)) * (n2 + n2 * n2) * 8
 
 
-def _run_query(binary, m, n, U, L):
-    inp = " ".join(map(str, U)) + "\n"
-    if L is not None:
-        inp += " ".join(map(str, L)) + "\n"
-    out = subprocess.run([binary, str(m), str(n)],
-                         input=inp, capture_output=True, text=True).stdout
-    for line in out.splitlines():
-        if line.startswith("query_value"):
-            return line.split()[1]
-    return None
-
-
 def _reflect(profile):
     # x <-> m-x is a unimodular map; reversing the profile must not change the
     # count.  (This is exactly the symmetry the flat-floor recurrence exploits,
@@ -87,7 +75,7 @@ def test_count(na_query_bin, name, m, n, U, L, expected):
     if mem > MEM_CAP:
         pytest.skip(f"needs ~{mem/1e9:.0f} GB (m={m}, n={n}); big-memory machine")
 
-    got = _run_query(na_query_bin, m, n, U, L)
+    got = run_query(na_query_bin, m, n, U, L)
     assert got is not None, "no query_value (the run may have failed)"
     if expected.startswith("~"):                 # approximate expectation
         ratio = int(got) / float(expected[1:])
@@ -96,5 +84,5 @@ def test_count(na_query_bin, name, m, n, U, L, expected):
         assert got == expected, f"got {got}, expected {expected}"
 
     # unimodular (reflection) invariance: the reversed profile must agree
-    rev = _run_query(na_query_bin, m, n, _reflect(U), _reflect(L))
+    rev = run_query(na_query_bin, m, n, _reflect(U), _reflect(L))
     assert rev == got, f"reflected profile gave {rev}, expected {got}"

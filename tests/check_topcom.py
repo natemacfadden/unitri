@@ -44,6 +44,7 @@ import subprocess
 
 # the GMP-discovery helper lives at the repo root (shared with setup.py)
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from _cli import run_query
 from _gmp import gmp_cflags
 from _topcom import count_fine_triangulations
 from cytools import Polytope
@@ -58,24 +59,12 @@ def skeleton_bytes(m, n):
     return (m + 1) * (n2 ** (m - 3)) * (n2 + n2 * n2) * 8
 
 
-def build_dp():
+def build_gmp_binary():
     # m, n are runtime arguments now, so one binary serves every region
-    out = "/tmp/na_qg_check"
+    out = "/tmp/na-query-check"
     subprocess.check_call(
         ["gcc", "-O2", *gmp_cflags(), "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
     return out
-
-
-def dp_query(binary, m, n, U, L=None):
-    inp = " ".join(map(str, U)) + "\n"
-    if L is not None:
-        inp += " ".join(map(str, L)) + "\n"
-    out = subprocess.run([binary, str(m), str(n)],
-                         input=inp, capture_output=True, text=True).stdout
-    for line in out.splitlines():
-        if line.startswith("query_value"):
-            return int(line.split()[1])
-    return None
 
 
 def region_points(U, L):
@@ -116,7 +105,7 @@ CONFIGS = [
 
 
 def main():
-    dp = build_dp()
+    binary = build_gmp_binary()
     fails = 0
     for m, n, cases in CONFIGS:
         mem = skeleton_bytes(m, n)
@@ -126,17 +115,17 @@ def main():
         print(f"== m={m} n={n} ==")
         for name, U, L in cases:
             status, tc = topcom_count(U, L)
-            q = dp_query(dp, m, n, U, L)
+            q = run_query(binary, m, n, U, L)
             if status != "ok":
                 print(f"  [skip] {name:32s} ({status})")
                 continue
             # x<->m-x reflection is unimodular: the reversed profile must agree
-            qr = dp_query(dp, m, n, U[::-1], None if L is None else L[::-1])
-            ok = (tc == q) and (qr == q)
+            qr = run_query(binary, m, n, U[::-1], None if L is None else L[::-1])
+            ok = (str(tc) == q) and (qr == q)
             fails += not ok
-            tag = f"topcom={tc:<8} dp={q}"
+            tag = f"topcom={tc:<8} na_query={q}"
             if qr != q:
-                tag += f"  NON-INVARIANT (reflected dp={qr})"
+                tag += f"  NON-INVARIANT (reflected na_query={qr})"
             print(f"  [{'OK ' if ok else 'BAD'}] {name:32s} {tag}")
     raise SystemExit(1 if fails else 0)
 

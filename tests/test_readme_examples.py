@@ -20,11 +20,10 @@ inputs keep producing the documented outputs (doc drift then fails CI).
 The expected values mirror the README examples verbatim -- if you change an
 example there, update it here too.
 """
-import subprocess
-
 import pytest
 
 import unitri
+from _cli import run_query
 
 # README "Python (Cython binding)" section: (name, m, n, upper, lower, count)
 PY_EXAMPLES = [
@@ -48,18 +47,9 @@ def test_readme_python_example(name, m, n, upper, lower, expected):
     assert unitri.na_query(m, n, upper, lower) == expected
 
 
-def _cli_query_value(binary, m, n, stdin):
-    out = subprocess.run([binary, str(m), str(n)], input=stdin,
-                         capture_output=True, text=True).stdout
-    for line in out.splitlines():
-        if line.startswith("query_value"):
-            return int(line.split()[1])
-    return None
-
-
 @pytest.mark.parametrize("name,m,n,stdin,expected", CLI_EXAMPLES,
                          ids=[c[0] for c in CLI_EXAMPLES])
 def test_readme_cli_example(na_query_bin, name, m, n, stdin, expected):
-    got = _cli_query_value(na_query_bin, m, n, stdin)
+    got = run_query(na_query_bin, m, n, stdin=stdin)
     assert got is not None, "no query_value (the run may have failed)"
-    assert got == expected
+    assert int(got) == expected

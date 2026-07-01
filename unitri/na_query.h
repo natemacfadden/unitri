@@ -624,7 +624,28 @@ static void reflect_query_into_stored_half(void){
   }
 }
 
-void read_query_profile(void){
+// Finish configuring a query once query_height[] (and lower_height[] when
+// lower_enabled) are populated: compute the area, derive the floor flags,
+// require the query to lie on/above the floor, and fold into the stored half.
+// Returns NA_OK, or NA_ERR_PROFILE if the query dips below the floor.  Shared
+// by query_from_stdin and query_from_arrays so the two paths cannot drift.
+// (Structural validation is NOT here: query_from_stdin's validate_profile
+// exit()s, which the library path must avoid -- see query_from_arrays.)
+static int finalize_query(void){
+  query_area = profile_area(query_height);
+  if (lower_enabled) {
+    lower_is_flat   = profile_is_flat_present(lower_height);
+    need_full_table = !lower_is_flat;
+    if (!profile_geq(query_height, lower_height)) return NA_ERR_PROFILE;
+  } else {
+    lower_is_flat   = 1;
+    need_full_table = 0;
+  }
+  reflect_query_into_stored_half();
+  return NA_OK;
+}
+
+void query_from_stdin(void){
   // upper (query) profile; a blank line or EOF here means "no query at all".
   // (Input format is documented in the README; see na_query_run's usage line.)
   if (!read_profile_line(query_height, "query")) {
@@ -633,23 +654,20 @@ void read_query_profile(void){
   }
   query_enabled = 1;
   validate_profile(query_height, "query");
-  query_area = profile_area(query_height);
 
   // optional floor profile; a blank line or EOF means "no floor"
-  if (!read_profile_line(lower_height, "lower")) {
-    reflect_query_into_stored_half();   // no floor: flat, reflection still applies
-    return;
+  if (read_profile_line(lower_height, "lower")) {
+    lower_enabled = 1;
+    validate_profile(lower_height, "lower");
+  } else {
+    lower_enabled = 0;
   }
 
-  lower_enabled = 1;
-  validate_profile(lower_height, "lower");
-  lower_is_flat = profile_is_flat_present(lower_height);
-  need_full_table = lower_enabled && !lower_is_flat;
-  if (!profile_geq(query_height, lower_height)) {
+  // shared finalization; its only failure is the query dipping below the floor
+  if (finalize_query() != NA_OK) {
     fprintf(stderr, "query profile must lie on or above lower profile\n");
     exit(1);
   }
-  reflect_query_into_stored_half();
 }
 
 int current_profile_is_query(void){
@@ -796,7 +814,7 @@ static atomic_int na_query_busy = 0;
 
 // Run the area-graded recurrence over the configured region.  Caller must have
 // set m, n, n1, n2, the modulus (mod-p build), and the query-config globals
-// (via read_query_profile or set_query).  Allocates and frees the tables, leaves
+// (via query_from_stdin or query_from_arrays).  Allocates and frees the tables, leaves
 // the queried count in query_value (when query_enabled), and prints the f-table
 // only in non-query mode.  Internal: does not take the reentrancy guard -- the
 // public entry points do.
@@ -1765,9 +1783,9 @@ printf("] = %ld\n",recurrence_sum);
 }
 
 // set the query-config globals from in-memory profiles -- the array-based,
-// no-I/O, no-exit counterpart of read_query_profile, used by na_query_count.
+// no-I/O, no-exit counterpart of query_from_stdin, used by na_query_count.
 // upper has m+1 heights; lower has m+1 heights, or is NULL for a flat floor.
-static int set_query(const int *upper, const int *lower){
+static int query_from_arrays(const int *upper, const int *lower){
   query_found = 0;
   // Validate heights at the API boundary so this stays the "no-exit" path: an
   // out-of-range value (notably n+1, which equals the absent-vertex marker n1)
@@ -1781,20 +1799,13 @@ static int set_query(const int *upper, const int *lower){
 
   for (int c=0; c<=m; c++) query_height[c] = upper[c];
   query_enabled = 1;
-  query_area = profile_area(query_height);
   if (lower) {
     for (int c=0; c<=m; c++) lower_height[c] = lower[c];
-    lower_enabled   = 1;
-    lower_is_flat   = profile_is_flat_present(lower_height);
-    need_full_table = !lower_is_flat;
-    if (!profile_geq(query_height, lower_height)) return NA_ERR_PROFILE;
+    lower_enabled = 1;
   } else {
     lower_enabled = 0;
-    lower_is_flat = 1;
-    need_full_table = 0;
   }
-  reflect_query_into_stored_half();
-  return NA_OK;
+  return finalize_query();
 }
 
 // In-process counting API (box_enum style): count fine triangulations of the
@@ -1812,7 +1823,7 @@ int na_query_count(int m_arg, int n_arg,
 #ifndef GMP
   if (modulus == 0) modulus = prime[0];   // default modulus if caller set none
 #endif
-  int st = set_query(upper, lower);
+  int st = query_from_arrays(upper, lower);
   if (st != NA_OK)  { atomic_store(&na_query_busy, 0); return st; }
   na_query_compute();
   if (!query_found) { atomic_store(&na_query_busy, 0); return NA_ERR_PROFILE; }
@@ -1856,7 +1867,7 @@ int na_query_run( int argc, char *argv[] ){
 #endif
 
   // read the optional target profile (blocks on stdin), then announce the run
-  read_query_profile();
+  query_from_stdin();
   if (query_enabled)
     printf("(* fine triangulations of the queried region in a %dx%d box *)\n", m, n);
   else
