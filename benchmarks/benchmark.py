@@ -117,12 +117,13 @@ def measure_slow(fn, repeat=REPEAT, budget=TOPCOM_BUDGET):
     return mean, sd, len(times)
 
 
-def fmt_profile(U, L):
-    """Compact upper/lower boundary heights that define the region's geometry;
-    a flat floor (lower is None) shows as 'flat'."""
-    upper = ",".join(map(str, U))
-    lower = "flat" if L is None else ",".join(map(str, L))
-    return f"{upper} / {lower}"
+def fmt_vertices(m, n, U, L):
+    """Convex-hull vertices of the (m, n, upper, lower) region -- the point-set
+    form you'd pass to count_triangulations."""
+    from unitri.profiles import _convex_hull
+    floor = L if L is not None else [0] * (m + 1)
+    pts = sorted({(x, y) for x in range(m + 1) for y in range(floor[x], U[x] + 1)})
+    return ",".join(f"({x},{y})" for x, y in sorted(_convex_hull(pts)))
 
 
 def topcom_count(U, L, cap=2_000_000):
@@ -142,9 +143,9 @@ def topcom_count(U, L, cap=2_000_000):
 
 
 def main():
-    print(f"{'region':20} {'upper / lower':21} {'triangulations':>16}  "
+    print(f"{'region':20} {'vertices':48} {'triangulations':>16}  "
           f"{'na_query (mean +/- sd)':>24}  {'TOPCOM (mean +/- sd)':>22}")
-    print("-" * 111)
+    print("-" * 136)
     for name, m, n, U, L, feasible in CASES:
         count = na_query(m, n, U, L)
         mean, sd = measure(lambda: na_query(m, n, U, L))
@@ -159,7 +160,7 @@ def main():
             floor = L if L is not None else [0] * (m + 1)
             res = measure_slow(lambda: topcom_count(U, floor))
             topcom = "too many" if res is None else f"{res[0]:.2f} +/- {res[1]:.2f} s"
-        print(f"{name:20} {fmt_profile(U, L):21} {shown:>16}  {na:>24}  {topcom:>22}")
+        print(f"{name:20} {fmt_vertices(m, n, U, L):48} {shown:>16}  {na:>24}  {topcom:>22}")
 
 
 if __name__ == "__main__":
