@@ -45,6 +45,7 @@ import subprocess
 # the GMP-discovery helper lives at the repo root (shared with setup.py)
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from _gmp import gmp_cflags
+from _topcom import count_fine_triangulations
 from cytools import Polytope
 
 MEM_CAP = 8e9   # bytes; skip configs whose pointer skeleton exceeds this
@@ -87,13 +88,9 @@ def topcom_count(U, L, cap=500000):
     p = Polytope(pts)
     if len(p.points()) != len(pts):
         return ("non-convex", None)          # region != its convex hull
-    c = 0
-    for _ in p.all_triangulations(only_fine=True, only_regular=False,
-                                  only_star=False,
-                                  include_points_interior_to_facets=True):
-        c += 1
-        if c > cap:
-            return ("too-many", None)
+    c = count_fine_triangulations(p, cap)
+    if c is None:
+        return ("too-many", None)
     return ("ok", c)
 
 

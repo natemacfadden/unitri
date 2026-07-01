@@ -41,23 +41,13 @@ try:
 except ImportError:
     HAS_CYTOOLS = False
 
+from _topcom import count_fine_triangulations
 from transforms import COMPACT, invariant_count
 
 SEED = 20260617
 TRIALS = 4000
 CHECK_LIMIT = 140    # stop after this many decided (matched/uncountable) cases
 CAP = 5000           # skip regions TOPCOM can't enumerate quickly
-
-
-def topcom_count(P, cap):
-    c = 0
-    for _ in P.all_triangulations(only_fine=True, only_regular=False,
-                                  only_star=False,
-                                  include_points_interior_to_facets=True):
-        c += 1
-        if c > cap:
-            return None
-    return c
 
 
 @pytest.mark.skipif(not HAS_CYTOOLS, reason="cytools not installed")
@@ -80,7 +70,7 @@ def test_topcom_cross_check():
         pts = [tuple(int(v) for v in p) for p in P.points()]
         if len(pts) > 15:                 # keep TOPCOM enumeration cheap
             continue
-        tc = topcom_count(P, CAP)
+        tc = count_fine_triangulations(P, CAP)
         if tc is None:
             continue
         try:
