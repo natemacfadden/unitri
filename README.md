@@ -178,6 +178,8 @@ unitri/
 ├── Makefile                     # build the na-query CLI (make both / na-query / na-query-mod)
 ├── pyproject.toml
 ├── setup.py
+├── environment.yml              # conda env with the GMP backend (recommended)
+├── environment-nogmp.yml        # conda env without GMP (mod-prime + CRT path)
 ├── _gmp.py                      # locate GMP (pkg-config -> Homebrew/conda); shared by setup.py + tests
 ├── MANIFEST.in
 ├── CITATION.cff
