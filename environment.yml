@@ -1,0 +1,19 @@
+# unitri with the GMP big-integer backend (recommended):
+#
+#     conda env create -f environment.yml
+#     conda activate unitri
+#
+# Builds and installs unitri (editable) with the fast single-run exact counter.
+# For a GMP-free setup, use environment-nogmp.yml instead.  To also run the
+# tests, `pip install -e .[test]` (adds pytest + cytools for the TOPCOM checks).
+name: unitri
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - pip
+  - c-compiler    # C toolchain to build the extension
+  - cython        # builds the na_query extension
+  - gmp           # big-integer backend
+  - pip:
+      - -e .

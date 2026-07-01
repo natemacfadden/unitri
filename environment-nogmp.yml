@@ -1,0 +1,18 @@
+# unitri without GMP -- exact counts via the mod-prime + CRT path
+# (count_triangulations_parallel), which needs only a C compiler:
+#
+#     conda env create -f environment-nogmp.yml
+#     conda activate unitri-nogmp
+#
+# The GMP extension (count_triangulations / na_query) is skipped at install;
+# use count_triangulations_parallel for exact counts.  For the GMP backend, use
+# environment.yml instead.
+name: unitri-nogmp
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - pip
+  - c-compiler    # C toolchain for the na-query mod-prime binary
+  - pip:
+      - -e .
