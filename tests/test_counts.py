@@ -29,7 +29,13 @@ Sources for the expected values:
 
 Memory for this code's index skeleton grows like (n+2)^(m-1); cases needing
 more than MEM_CAP are skipped (they require a big-memory machine).
+
+Also checks the flat-rectangle f(m,k) table that na-query.c prints when given no
+query on stdin -- the only path that exercises the table emitter.
 """
+import re
+import subprocess
+
 import pytest
 
 from _cli import run_query
@@ -86,3 +92,24 @@ def test_count(na_query_bin, name, m, n, U, L, expected):
     # unimodular (reflection) invariance: the reversed profile must agree
     rev = run_query(na_query_bin, m, n, _reflect(U), _reflect(L))
     assert rev == got, f"reflected profile gave {rev}, expected {got}"
+
+
+# flat-rectangle f(m,k) table (na-query.c with no query on stdin).  Exact and
+# cross-consistent -- f(m,k)=f(k,m), e.g. f(3,4)=f(4,3)=2822648 -- and matches
+# the known rectangle counts (f(3,2)=852, f(4,4)=736983568).
+TABLES = [
+    (3, 5, [20, 852, 46456, 2822648, 182881520]),
+    (4, 4, [70, 12170, 2822648, 736983568]),
+]
+
+
+def _ftable(binary, m, n):
+    """Run in table mode (empty stdin) and return the list of f(m,k) values."""
+    out = subprocess.run([binary, str(m), str(n)],
+                         input="", capture_output=True, text=True).stdout
+    return [int(v) for v in re.findall(r"f\(\d+,\d+\) = \*\) (\d+)", out)]
+
+
+@pytest.mark.parametrize("m,n,expected", TABLES, ids=[f"{m}x{n}" for m, n, _ in TABLES])
+def test_ftable_mode(na_query_bin, m, n, expected):
+    assert _ftable(na_query_bin, m, n) == expected

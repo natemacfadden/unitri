@@ -14,26 +14,28 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
-"""Cross-check unitri.count_triangulations against TOPCOM on convex point sets.
+"""Cross-check convex-region counts against TOPCOM (CYTools) -- convex polygons
+are the counter's least-tested regime.  Two complementary checks:
 
-Generates random small convex lattice point sets and, for each, compares
-count_triangulations (which picks a hull-tracing orientation and feeds na_query)
-against TOPCOM (CYTools).  The contract under test: count_triangulations either
-returns a count that EXACTLY matches TOPCOM, or it raises (point sets na_query
-cannot represent without undercounting -- those needing "long-diagonal"
-triangulations).  A returned-but-wrong count is a failure.
+  * curated, named convex polygons (trapezoids, pentagons, hexagons -- two with
+    absent boundary vertices, exercising the absent-mask kernel path), with
+    TOPCOM-verified counts; and
+  * a randomized fuzzer over small convex point sets.
 
-Each decided set is also counted under the dihedral (D4) symmetries of the
-square: the count must be the same in every orientation (a count that depends on
-orientation is a bug), and equal to TOPCOM.
+Both feed `count_triangulations` (which picks a hull-tracing orientation and
+calls na_query) and require it to either match TOPCOM exactly or raise (sets
+na_query can't represent without undercounting -- "long-diagonal" cases).  Each
+decided set is also counted under the dihedral (D4) symmetries: the count must
+be orientation-independent and equal TOPCOM.
 
-Requires CYTools; skipped if it is not installed.
-
-    pytest tests/test_topcom_convex.py
+The curated counts are asserted even without CYTools; the live TOPCOM
+re-enumeration and the fuzzer are skipped when CYTools is absent.
 """
 import random
 
 import pytest
+
+import unitri
 
 try:
     from cytools import Polytope
@@ -44,6 +46,53 @@ except ImportError:
 from _topcom import count_fine_triangulations
 from transforms import COMPACT, invariant_count
 
+# --- curated, named convex polygons -----------------------------------------
+# (name, CCW vertices, TOPCOM-verified fine-triangulation count)
+POLYGONS = [
+    ("trapezoid",              [(0, 0), (4, 0), (3, 2), (1, 2)],                 140),
+    ("hexagon (absent verts)", [(1, 0), (2, 0), (3, 1), (2, 2), (1, 2), (0, 1)], 24),
+    ("wide trapezoid",         [(0, 0), (5, 0), (4, 2), (1, 2)],                 2046),
+    ("steep pentagon",         [(0, 0), (2, 0), (3, 2), (2, 4), (0, 2)],         1392),
+    ("hexagon",                [(0, 0), (3, 0), (4, 1), (4, 2), (2, 3), (0, 2)], 12135),
+    ("asym pentagon (absent)", [(0, 0), (4, 0), (3, 3), (1, 3), (0, 1)],         10843),
+]
+
+
+def _lattice_points(verts):
+    """Integer points inside or on the convex polygon `verts` (either winding).
+    Matches CYTools' Polytope(verts).points() for these shapes, but needs no
+    CYTools, so the count assertions run in CI."""
+    xs = [x for x, _ in verts]
+    ys = [y for _, y in verts]
+    k = len(verts)
+
+    def inside(px, py):
+        signs = set()
+        for i in range(k):
+            x0, y0 = verts[i]
+            x1, y1 = verts[(i + 1) % k]
+            cr = (x1 - x0) * (py - y0) - (y1 - y0) * (px - x0)
+            if cr:
+                signs.add(cr > 0)
+        return len(signs) <= 1
+
+    return [(x, y) for x in range(min(xs), max(xs) + 1)
+            for y in range(min(ys), max(ys) + 1) if inside(x, y)]
+
+
+@pytest.mark.parametrize("name,verts,expected", POLYGONS, ids=[p[0] for p in POLYGONS])
+def test_convex_polygon_count(name, verts, expected):
+    assert unitri.count_triangulations(_lattice_points(verts)) == expected
+
+
+@pytest.mark.skipif(not HAS_CYTOOLS, reason="cytools not installed")
+@pytest.mark.parametrize("name,verts,expected", POLYGONS, ids=[p[0] for p in POLYGONS])
+def test_convex_polygon_matches_topcom(name, verts, expected):
+    # keep the pinned counts honest: re-enumerate with TOPCOM when it's available
+    assert count_fine_triangulations(Polytope(verts), cap=50000) == expected
+
+
+# --- randomized fuzz over small convex point sets ---------------------------
 SEED = 20260617
 TRIALS = 6000
 CHECK_LIMIT = 180    # stop after this many decided (matched/uncountable) cases
