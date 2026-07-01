@@ -29,12 +29,15 @@ example (these two residues combine to 736983568, the count for the 4x4 square):
   10602      # count mod prime[1] = 29453
 """
 
+from __future__ import annotations
+
 import argparse
 import math
 import sys
+from collections.abc import Iterable
 from pathlib import Path
 
-PRIMES = [
+PRIMES: list[int] = [
     29443, 29453, 29473, 29483, 29501, 29527, 29531, 29537, 29567, 29569,
     29573, 29581, 29587, 29599, 29611, 29629, 29633, 29641, 29663, 29669,
     29671, 29683, 29717, 29723, 29741, 29753, 29759, 29761, 29789, 29803,
@@ -58,7 +61,7 @@ PRIMES = [
 ]
 
 
-def parse_residues(lines):
+def parse_residues(lines: Iterable[str]) -> list[int]:
     residues = []
     for line in lines:
         line = line.split('#', 1)[0].strip()
@@ -67,7 +70,7 @@ def parse_residues(lines):
     return residues
 
 
-def combine_pair(a, m, b, n):
+def combine_pair(a: int, m: int, b: int, n: int) -> tuple[int, int]:
     g = math.gcd(m, n)
     if (b - a) % g != 0:
         raise ValueError(f'inconsistent congruences mod {m} and mod {n}')
@@ -80,7 +83,7 @@ def combine_pair(a, m, b, n):
     return value, modulus
 
 
-def combine(congruences):
+def combine(congruences: Iterable[tuple[int, int]]) -> tuple[int, int]:
     value = 0
     modulus = 1
     for residue, next_modulus in congruences:
@@ -88,7 +91,7 @@ def combine(congruences):
     return value, modulus
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)

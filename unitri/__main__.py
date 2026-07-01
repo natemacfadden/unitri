@@ -25,6 +25,8 @@ stderr (so the count alone is still pipeable); pass -q to silence them.
     pbpaste | python3 -m unitri          # paste a numpy array straight in
     echo "[[0,0],[3,0],[0,3],[3,3]]" | python3 -m unitri
 """
+from __future__ import annotations
+
 import argparse
 import re
 import sys
@@ -33,7 +35,7 @@ import time
 from .profiles import count_triangulations, points_to_profiles
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(
         prog="python3 -m unitri",
         description="Count fine triangulations of a 2-D lattice point set.")
@@ -44,7 +46,7 @@ def main(argv=None):
                     help="print only the count (suppress stderr diagnostics)")
     args = ap.parse_args(argv)
 
-    def log(msg):
+    def log(msg: str) -> None:
         if not args.quiet:
             print(msg, file=sys.stderr, flush=True)
 

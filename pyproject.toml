@@ -43,3 +43,12 @@ line-length = 88
 # ruff's default rule set, pinned so a ruff upgrade can't silently change what
 # CI enforces: pyflakes (F) plus pycodestyle import/statement/runtime errors.
 select = ["E4", "E7", "E9", "F"]
+
+[tool.mypy]
+files = ["unitri"]
+
+# the compiled Cython extension (unitri.na_query) ships no type stubs, so its
+# implementation can't be checked; its pure-Python wrappers still are.
+[[tool.mypy.overrides]]
+module = "unitri.na_query"
+ignore_missing_imports = true

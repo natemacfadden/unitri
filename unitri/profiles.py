@@ -25,10 +25,15 @@ Counts are unimodular-invariant, so we pick a minimal-width orientation (width
 >= 3, na_query's lower bound) to keep the ~ (n+2)^(m-1) cost down, and cross-check
 against TOPCOM. If every orientation has width < 3 we raise.
 """
+from __future__ import annotations
+
+from collections.abc import Iterable
 from math import gcd
 
+Point = tuple[int, int]
 
-def _ext_gcd(a, b):
+
+def _ext_gcd(a: int, b: int) -> tuple[int, int, int]:
     """Return (g, x, y) with a*x + b*y = g = gcd(a, b)."""
     if b == 0:
         return (abs(a), (1 if a >= 0 else -1) if a else 0, 0)
@@ -36,24 +41,24 @@ def _ext_gcd(a, b):
     return (g, y, x - (a // b) * y)
 
 
-def _width(pts, a, b):
+def _width(pts: list[Point], a: int, b: int) -> int:
     vals = [a * x + b * y for x, y in pts]
     return max(vals) - min(vals)
 
 
-def _convex_hull(pts):
+def _convex_hull(pts: list[Point]) -> list[Point]:
     """CCW convex-hull vertices of `pts` (Andrew's monotone chain)."""
     pts = sorted(set(pts))
 
-    def cross(o, a, b):
+    def cross(o: Point, a: Point, b: Point) -> int:
         return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0])
 
-    lower = []
+    lower: list[Point] = []
     for p in pts:
         while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
             lower.pop()
         lower.append(p)
-    upper = []
+    upper: list[Point] = []
     for p in reversed(pts):
         while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
             upper.pop()
@@ -61,11 +66,13 @@ def _convex_hull(pts):
     return lower[:-1] + upper[:-1]
 
 
-def _column_bounds(hull, x):
+def _column_bounds(hull: list[Point], x: int
+                   ) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
     """Hull's [lower, upper] y-range at integer column `x`, each as a reduced
     (num, den) with den > 0 (a lattice point exactly when num % den == 0).
     Robust to vertical edges (they only occur at the extreme columns)."""
-    lo = hi = None
+    lo: tuple[int, int] | None = None
+    hi: tuple[int, int] | None = None
     V = len(hull)
     for i in range(V):
         x0, y0 = hull[i]
@@ -90,7 +97,7 @@ def _column_bounds(hull, x):
     return lo, hi
 
 
-def _orientations(pts):
+def _orientations(pts: list[Point]) -> list[tuple[int, int]]:
     """Primitive orientations (a, b) with lattice width >= 3, smallest width
     first (smaller width => smaller m => cheaper na_query)."""
     xs = [x for x, _ in pts]
@@ -110,7 +117,8 @@ def _orientations(pts):
     return [ab for _, ab in cands]
 
 
-def _build_profile(pts, a, b):
+def _build_profile(pts: list[Point], a: int, b: int
+                   ) -> tuple[int, int, list[int], list[int]]:
     """(m, n, upper, lower) reading the convex-hull boundary in orientation
     u = (a, b). A column whose boundary height is non-integer gets the n+1
     sentinel ("."), an absent vertex."""
@@ -122,9 +130,14 @@ def _build_profile(pts, a, b):
     tpts = [(X - sx, Y - sy) for X, Y in tpts]
     hull = _convex_hull(tpts)
     m = max(X for X, _ in tpts)
-    present_U, raw_U, raw_L = [], [], []
+    present_U: list[int] = []
+    raw_U: list[int | None] = []
+    raw_L: list[int | None] = []
     for X in range(m + 1):
-        (ln, ld), (un, ud) = _column_bounds(hull, X)
+        col_lo, col_hi = _column_bounds(hull, X)
+        # columns 0..m are inside the hull's x-range, so both bounds exist
+        assert col_lo is not None and col_hi is not None
+        (ln, ld), (un, ud) = col_lo, col_hi
         u = un // ud if un % ud == 0 else None
         lo = ln // ld if ln % ld == 0 else None
         raw_U.append(u)
@@ -138,7 +151,8 @@ def _build_profile(pts, a, b):
     return m, n, upper, lower
 
 
-def points_to_profiles(points):
+def points_to_profiles(points: Iterable[tuple[int, int]]
+                       ) -> tuple[int, int, list[int], list[int]]:
     """Convert 2-D lattice points to na_query's (m, n, upper, lower), reading
     the convex-hull boundary in a minimal-width orientation (absent columns get
     the n+1 sentinel).
@@ -155,7 +169,7 @@ def points_to_profiles(points):
     return m, n, upper, lower
 
 
-def count_triangulations(points):
+def count_triangulations(points: Iterable[tuple[int, int]]) -> int:
     """Count the fine triangulations of a 2-D lattice point set -> Python int.
 
     Uses a minimal-width hull-tracing orientation (na_query needs m >= 3 and
@@ -171,7 +185,7 @@ def count_triangulations(points):
     if not ors:
         raise ValueError("point set is too thin: width < 3 in every orientation "
                          "(na_query needs m >= 3)")
-    last = None
+    last: RuntimeError | None = None
     for a, b in ors[:24]:                       # bound the retries
         m, n, upper, lower = _build_profile(pts, a, b)
         try:
