@@ -39,3 +39,8 @@ jobs:
         # test_symmetry skips its TOPCOM sub-checks; the counting,
         # reflection- and unimodular-invariance regressions still run
         run: pytest tests/ -v
+      - name: Smoke-run the benchmark
+        # CYTools is absent here, so this only times na_query (no TOPCOM); it
+        # just confirms benchmark.py -- the README's reproduce command -- still
+        # runs end to end.
+        run: python benchmarks/benchmark.py

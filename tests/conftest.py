@@ -39,3 +39,14 @@ def na_query_bin(tmp_path_factory):
     subprocess.check_call(
         ["gcc", "-O2", *gmp_cflags(), "-DGMP", "-o", out, NA_QUERY_C, "-lgmp"])
     return out
+
+
+@pytest.fixture(scope="session")
+def na_query_mod_bin(tmp_path_factory):
+    """Compile na-query.c with the default mod-prime backend (no -DGMP, hence no
+    libgmp), once per session, and return the path to the binary.  The mod-prime
+    suite queries this and reconstructs exact counts via crt_combine -- covering
+    the default (most-compiled) build path that the GMP suite leaves untested."""
+    out = str(tmp_path_factory.mktemp("unitri") / "na-query-mod")
+    subprocess.check_call(["gcc", "-O2", "-o", out, NA_QUERY_C])
+    return out
