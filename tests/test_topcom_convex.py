@@ -45,9 +45,9 @@ from _topcom import count_fine_triangulations
 from transforms import COMPACT, invariant_count
 
 SEED = 20260617
-TRIALS = 4000
-CHECK_LIMIT = 140    # stop after this many decided (matched/uncountable) cases
-CAP = 5000           # skip regions TOPCOM can't enumerate quickly
+TRIALS = 6000
+CHECK_LIMIT = 180    # stop after this many decided (matched/uncountable) cases
+CAP = 8000           # skip regions TOPCOM can't enumerate quickly
 
 
 @pytest.mark.skipif(not HAS_CYTOOLS, reason="cytools not installed")
@@ -56,9 +56,9 @@ def test_topcom_cross_check():
     matched = uncountable = 0
     problems = []
     for _ in range(TRIALS):
-        coord = rng.choice([3, 4, 5])
+        coord = rng.choice([3, 4, 5, 6])
         cloud = {(rng.randint(0, coord), rng.randint(0, coord))
-                 for _ in range(rng.randint(4, 9))}
+                 for _ in range(rng.randint(4, 10))}
         if len(cloud) < 3:
             continue
         try:

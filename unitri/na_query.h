@@ -815,6 +815,19 @@ static atomic_int na_query_busy = 0;
 // Run the area-graded recurrence over the configured region.  Caller must have
 // set m, n, n1, n2, the modulus (mod-p build), and the query-config globals
 // (via query_from_stdin or query_from_arrays).  Allocates and frees the tables, leaves
+// Print one row of the flat-square f(m,k) table -- only in table mode (no
+// query), and only when twice_area completes a k*(2m) block; a no-op otherwise.
+static void emit_ftable(long *n2pow){
+  if (!query_enabled && twice_area%(2*m) == 0) {
+    shape_index = 0;
+    for (int coord=1; coord<=m-3; coord++) shape_index += n2pow[m-3-coord];
+    int k = twice_area/(2*m);
+    printf("(* f(%d,%d) = *) ", m, k);
+    PRINT_VAL(H[twice_area][k*shape_index][k][k][k]);
+    if (k<n) puts(","); else puts("};");
+  }
+}
+
 // the queried count in query_value (when query_enabled), and prints the f-table
 // only in non-query mode.  Internal: does not take the reentrancy guard -- the
 // public entry points do.
@@ -1334,17 +1347,7 @@ static int na_query_compute(void){
 
      }
 
-     // print the flat-square f(m,k) table only when not answering a query
-     if (!query_enabled && twice_area%(2*m) == 0) {
-      shape_index = 0;
-      for (int coord=1; coord<=m-3; coord++) shape_index+=n2pow[m-3-coord];
-
-      int k=twice_area/(2*m);
-      printf("(* f(%d,%d) = *) ",m,k);
-      PRINT_VAL(H[twice_area][k*shape_index][k][k][k]);
-      if(k<n) puts(",");
-      else puts("};");
-     }
+     emit_ftable(n2pow);
      if (twice_area==2*n*m) break;
 
      // fill H[twice_area] for shapes with one or more absent upper-boundary
