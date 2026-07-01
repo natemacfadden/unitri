@@ -132,17 +132,17 @@ Ubuntu 26.04, gcc 15.2. Both columns are warmed up once, then reported as the
 per-call mean ± stdev: `na_query` in process through the compiled extension (not
 a subprocess), with auto-scaled repetitions over 7 batches; TOPCOM one run per
 batch, its repeats stopping once their cumulative time exceeds a 60 s budget.
-The `upper / lower` column gives the boundary heights `h_0..h_m` that define
-each region (`flat` = floor at 0).
+The `vertices` column gives each region's convex-hull corners; pass them to
+`count_triangulations` (or `count_triangulations_parallel`) to reproduce.
 
-| region | upper / lower | triangulations | `na_query` | TOPCOM |
+| region | vertices | triangulations | `na_query` | TOPCOM |
 |---|---|---|---|---|
-| 3x2 rectangle | 2,2,2,2 / 0,0,0,0 | 852 | 0.020 ± 0.000 ms | 0.04 ± 0.01 s |
-| polygon | 2,3,3,3,2 / 2,1,0,0,1 | 10,653 | 0.190 ± 0.001 ms | 0.56 ± 0.00 s |
-| polygon | 3,4,4,4,3 / 3,1,0,0,1 | 840,021 | 0.517 ± 0.001 ms | 55.0 ± 0.3 s |
-| 4x4 square | 4,4,4,4,4 / flat | 736,983,568 | 0.330 ± 0.004 ms | infeasible |
-| 4x10 square | 10,10,10,10,10 / flat | ~5.8e23 | 13.10 ± 0.04 ms | infeasible |
-| triangle, height 84 | 84,56,28,0 / flat | ~7.6e65 | 1.26 ± 0.003 s | infeasible |
+| 3x2 rectangle | (0,0),(0,2),(3,0),(3,2) | 852 | 0.020 ± 0.000 ms | 0.04 ± 0.01 s |
+| polygon | (0,2),(1,3),(2,0),(3,0),(3,3),(4,1),(4,2) | 10,653 | 0.190 ± 0.001 ms | 0.56 ± 0.00 s |
+| polygon | (0,3),(1,1),(1,4),(2,0),(3,0),(3,4),(4,1),(4,3) | 840,021 | 0.517 ± 0.001 ms | 55.0 ± 0.3 s |
+| 4x4 square | (0,0),(0,4),(4,0),(4,4) | 736,983,568 | 0.330 ± 0.004 ms | infeasible |
+| 4x10 square | (0,0),(0,10),(4,0),(4,10) | ~5.8e23 | 13.10 ± 0.04 ms | infeasible |
+| triangle, height 84 | (0,0),(0,84),(3,0) | ~7.6e65 | 1.26 ± 0.003 s | infeasible |
 
 Counts agree exactly with TOPCOM wherever TOPCOM can finish. Reproduce with
 `pip install -e . && python benchmarks/benchmark.py`.
