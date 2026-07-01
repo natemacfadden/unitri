@@ -144,15 +144,12 @@ unitri/
 │   ├── __main__.py     # CLI: python -m unitri (count a lattice point set)
 │   └── __init__.py
 ├── tests/
-│   ├── test_convex_polygons.py  # general convex polygons vs TOPCOM (the main use-case)
-│   ├── test_topcom_convex.py    # randomized convex point sets vs TOPCOM
-│   ├── test_counts.py           # exact counts vs literature / TOPCOM
+│   ├── test_topcom_convex.py    # convex polygons vs TOPCOM: curated + randomized (the main use-case)
+│   ├── test_counts.py           # exact counts vs literature / TOPCOM; f(m,k) table mode
+│   ├── test_mod_prime.py        # default mod-prime backend + crt_combine (CRT reconstruction)
 │   ├── test_symmetry.py         # hard x<->m-x reflection cases
 │   ├── test_unimodular.py       # unimodular invariance
-│   ├── test_mod_prime.py        # default mod-prime backend end-to-end via CRT
-│   ├── test_crt_combine.py      # crt_combine unit tests
 │   ├── test_readme_examples.py  # the examples in this README, asserted
-│   ├── test_ftable.py           # flat-rectangle f(m,k) table mode
 │   ├── check_topcom.py          # standalone TOPCOM cross-check (fixed convex regions)
 │   ├── conftest.py              # shared fixtures (builds the GMP/mod-prime binaries)
 │   ├── _cli.py                  # shared "run the na-query CLI" helper
