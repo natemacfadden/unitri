@@ -182,10 +182,9 @@ unitri/
 ├── environment-nogmp.yml        # conda env without GMP (mod-prime + CRT path)
 ├── _gmp.py                      # locate GMP (pkg-config -> Homebrew/conda); shared by setup.py + tests
 ├── MANIFEST.in
-├── CITATION.cff
-└── LICENSE
+└── CITATION.cff
 ```
 
-## License
+## Provenance
 
-[GPLv3](LICENSE). Copyright (c) 2026 Nate MacFadden.
+The core counting algorithm and original code are by Stepan Orevkov; see the attribution notes in `unitri/na_query.h` and `CITATION.cff`.
