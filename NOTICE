@@ -1,0 +1,10 @@
+unitri is a modification and generalization of lattice-triangulation counting
+code originally written by Stepan Orevkov (see arXiv:2201.12827), included and
+distributed here with his permission. Orevkov's original portions remain his
+copyright. Michael Stepniczka contributed to an earlier cleanup of the original
+code.
+
+The modifications, generalizations, packaging, and all other files in this
+repository are licensed under the GNU General Public License v3 (see LICENSE).
+If you require different licensing terms for the Orevkov-derived portions,
+please contact the authors.

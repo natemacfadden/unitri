@@ -7,6 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unitri"
+license = "GPL-3.0-or-later"
 version = "0.1.0"
 description = "Counting unimodular triangulations of a lattice polygon"
 authors = [{ name = "Nate MacFadden for the Liam McAllister Group" }]

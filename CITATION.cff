@@ -1,6 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: unitri
+license: GPL-3.0-or-later
 abstract: "Counts the unimodular triangulations of a lattice polygon (a transfer-matrix counter; based on the original program by Stepan Orevkov, reworked and generalized by Nate MacFadden)."
 authors:
   - family-names: MacFadden

@@ -182,9 +182,11 @@ unitri/
 ├── environment-nogmp.yml        # conda env without GMP (mod-prime + CRT path)
 ├── _gmp.py                      # locate GMP (pkg-config -> Homebrew/conda); shared by setup.py + tests
 ├── MANIFEST.in
-└── CITATION.cff
+├── CITATION.cff
+├── NOTICE                       # provenance: Orevkov's original code, shared with permission
+└── LICENSE                      # GPLv3
 ```
 
 ## Provenance
 
-The core counting algorithm and original code are by Stepan Orevkov; see the attribution notes in `unitri/na_query.h` and `CITATION.cff`.
+The core counting algorithm and original code are by Stepan Orevkov, included and distributed with his permission; see `NOTICE` and the attribution notes in `unitri/na_query.h` and `CITATION.cff`. The modifications, generalizations, and packaging are licensed under GPLv3 (see `LICENSE`).
