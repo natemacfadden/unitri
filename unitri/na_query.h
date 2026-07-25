@@ -176,12 +176,6 @@ int n1, n2;  // n+1, n+2
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
 
 
-// debugging flags
-// ---------------
-// debug flag
-//#define DEBUG
-
-
 #ifdef GMP
 // big-integer arithmetic
 // ----------------------
