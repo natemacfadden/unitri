@@ -10,8 +10,8 @@ astronomically many triangulations that enumeration tools cannot.
 
 Based on the original program by **Stepan Orevkov**
 (<http://picard.ups-tlse.fr/~orevkov>), reworked and generalized by Nate
-MacFadden (with Claude Opus 4.8); an earlier minor cleanup was by Michael
-Stepniczka and Nate MacFadden.
+MacFadden (with Claude Opus 4.8); an earlier minor cleanup was by [Michael
+Stepniczka](https://github.com/michaelstepniczka) and Nate MacFadden.
 
 > **If there are any bugs/issues in this code, assume they are due to Nate
 > MacFadden's rework and *not* Stepan Orevkov's original code.**
